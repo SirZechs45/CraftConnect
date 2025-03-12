@@ -779,7 +779,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { amount } = req.body;
       
-      if (!amount || isNaN(parseFloat(amount))) {
+      if (!amount || typeof amount === 'undefined' || isNaN(parseFloat(String(amount)))) {
         return res.status(400).json({ message: 'Valid amount is required' });
       }
       
@@ -790,7 +790,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create a payment intent with improved options for test mode
       const paymentIntent = await stripe.paymentIntents.create({
-        amount: Math.round(Number(amount) * 100), // Convert to cents
+        amount: Math.round(parseFloat(String(amount)) * 100), // Convert to cents
         currency: 'usd',
         // Add metadata to help identify the payment
         metadata: {
