@@ -23,22 +23,25 @@ const stripe = new Stripe(STRIPE_SECRET_KEY, {
   apiVersion: '2023-10-16',
 });
 
-// Session setup
-const SessionStore = MemoryStore(session);
+// Session setup with PostgreSQL store for persistence
+import pgSession from 'connect-pg-simple';
+const PostgresStore = pgSession(session);
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Setup session
+  // Setup session with Postgres for persistence
   app.use(session({
+    store: new PostgresStore({
+      conString: process.env.DATABASE_URL,
+      tableName: 'sessions', // Default
+      createTableIfMissing: true, // Create the sessions table if it doesn't exist
+    }),
     secret: process.env.SESSION_SECRET || 'your-secret-key',
     resave: false,
     saveUninitialized: false,
     cookie: { 
       secure: process.env.NODE_ENV === 'production',
       maxAge: 24 * 60 * 60 * 1000 // 24 hours
-    },
-    store: new SessionStore({
-      checkPeriod: 86400000 // prune expired entries every 24h
-    })
+    }
   }));
 
   // Middleware to check if user is authenticated
