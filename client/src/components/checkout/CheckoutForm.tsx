@@ -84,16 +84,22 @@ export default function CheckoutForm() {
       await apiRequest("POST", "/api/orders", orderData);
 
       // Process payment with Stripe
-      const { error } = await stripe.confirmPayment({
+      const { error, paymentIntent } = await stripe.confirmPayment({
         elements,
         confirmParams: {
-          return_url: window.location.origin + "/order-confirmation",
+          // return_url: window.location.origin + "/order-confirmation",  Removed for direct handling
         },
       });
 
       if (error) {
         throw new Error(error.message || "Payment failed");
+      } else if (paymentIntent && paymentIntent.status === 'succeeded') {
+        // Handle successful payment without relying on automatic redirect
+        window.location.href = '/order-confirmation';
+      } else {
+          throw new Error("Payment not successful")
       }
+
 
       // Clear cart on successful payment
       clearCart();
@@ -103,7 +109,7 @@ export default function CheckoutForm() {
         description: "Your order has been successfully placed!",
       });
 
-      navigate("/order-confirmation");
+      // navigate("/order-confirmation"); //Removed as redirect is handled directly
     } catch (error: any) {
       setErrorMessage(error.message || "An error occurred during checkout");
       toast({

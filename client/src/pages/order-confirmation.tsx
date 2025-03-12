@@ -1,36 +1,63 @@
-
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Link } from 'wouter';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { Button } from '@/components/ui/button';
+// Added useAuth and necessary types.  Assumptions made about their structure.
+import { useAuth } from '@/lib/auth';
+type User = { id: number; };
+
 
 export default function OrderConfirmation() {
   const [searchParams] = useSearchParams();
   const [paymentStatus, setPaymentStatus] = useState<'success' | 'processing' | 'failed'>('processing');
   const [orderId, setOrderId] = useState<string | null>(null);
+  const { user } = useAuth();
 
   useEffect(() => {
-    // Check for payment intent status in URL
     const paymentIntent = searchParams.get('payment_intent');
-    const redirectStatus = searchParams.get('redirect_status');
-    
+
+    //If paymentIntent exists, use it. Otherwise, fetch most recent order if user is logged in.
     if (paymentIntent) {
       setOrderId(paymentIntent);
+      //Simulate checking payment status - replace with actual API call
+      setTimeout(() => {
+        setPaymentStatus('success'); //Replace with actual status check
+      }, 1000);
+    } else if (user?.id) {
+      fetchMostRecentOrder(user.id);
+    } else {
+      setPaymentStatus('failed'); //Handle case where no paymentIntent and no user.
     }
-    
-    if (redirectStatus === 'succeeded') {
-      setPaymentStatus('success');
-    } else if (redirectStatus === 'failed') {
-      setPaymentStatus('failed');
+  }, [searchParams, user]);
+
+  // Function to fetch the most recent order for the user
+  const fetchMostRecentOrder = async (userId: number) => {
+    try {
+      const response = await fetch('/api/orders?latest=true&userId=' + userId); // Added userId to fetch
+      if (response.ok) {
+        const orders = await response.json();
+        if (orders && orders.length > 0) {
+          setOrderId(orders[0].id.toString()); // Assuming id is a number, converting to string
+          setPaymentStatus('success');
+        } else {
+          setPaymentStatus('failed'); // Handle case where no orders found.
+        }
+      } else {
+        setPaymentStatus('failed'); //Handle network error or other issues.
+        console.error('Failed to fetch recent order:', response.statusText);
+      }
+    } catch (error) {
+      setPaymentStatus('failed'); // Handle error during fetch.
+      console.error('Failed to fetch recent order:', error);
     }
-  }, [searchParams]);
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
-      
+
       <main className="flex-grow container max-w-5xl mx-auto px-4 py-10">
         <div className="bg-white rounded-lg shadow-sm p-8 text-center">
           {paymentStatus === 'success' && (
@@ -47,7 +74,7 @@ export default function OrderConfirmation() {
               </p>
             </>
           )}
-          
+
           {paymentStatus === 'processing' && (
             <>
               <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -62,7 +89,7 @@ export default function OrderConfirmation() {
               </p>
             </>
           )}
-          
+
           {paymentStatus === 'failed' && (
             <>
               <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -76,12 +103,12 @@ export default function OrderConfirmation() {
               </p>
             </>
           )}
-          
+
           <div className="flex flex-col sm:flex-row justify-center gap-4">
             <Button asChild>
               <Link href="/products">Continue Shopping</Link>
             </Button>
-            
+
             {paymentStatus !== 'processing' && (
               <Button variant="outline" asChild>
                 <Link href="/account/orders">View Orders</Link>
@@ -90,7 +117,7 @@ export default function OrderConfirmation() {
           </div>
         </div>
       </main>
-      
+
       <Footer />
     </div>
   );

@@ -467,6 +467,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.session.userId;
       const user = await storage.getUser(userId);
+      const latest = req.query.latest === 'true';
       
       let orders;
       if (user?.role === 'admin') {
@@ -475,6 +476,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         orders = await storage.getOrdersForSellerProducts(userId);
       } else {
         orders = await storage.getOrdersByBuyer(userId);
+      }
+      
+      // Sort orders by createdAt in descending order (newest first)
+      orders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      
+      // If latest flag is set, return only the most recent order
+      if (latest && orders.length > 0) {
+        const latestOrder = orders[0];
+        const items = await storage.getOrderItems(latestOrder.id);
+        return res.json([{
+          ...latestOrder,
+          items
+        }]);
       }
       
       // Get order items for each order
