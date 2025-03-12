@@ -41,7 +41,7 @@ export default function CheckoutForm() {
   const [_, navigate] = useLocation();
   const { cartTotal, cartItems, clearCart } = useCart();
   const { user } = useAuth();
-  
+
   const stripe = useStripe();
   const elements = useElements();
 
@@ -71,7 +71,7 @@ export default function CheckoutForm() {
       const orderData = {
         order: {
           buyerId: user?.id || 0, // Get user ID from auth context
-          totalAmount: cartTotal,
+          totalAmount: cartTotal.toString(), // Convert to string
           orderStatus: "pending",
         },
         items: cartItems.map(item => ({
@@ -83,7 +83,7 @@ export default function CheckoutForm() {
 
       // Create order
       await apiRequest("POST", "/api/orders", orderData);
-      
+
       // Process payment with Stripe
       const { error } = await stripe.confirmPayment({
         elements,
@@ -98,12 +98,12 @@ export default function CheckoutForm() {
 
       // Clear cart on successful payment
       clearCart();
-      
+
       toast({
         title: "Order Placed",
         description: "Your order has been successfully placed!",
       });
-      
+
       navigate("/order-confirmation");
     } catch (error: any) {
       toast({
@@ -133,7 +133,7 @@ export default function CheckoutForm() {
               </FormItem>
             )}
           />
-          
+
           <FormField
             control={form.control}
             name="email"
@@ -148,7 +148,7 @@ export default function CheckoutForm() {
             )}
           />
         </div>
-        
+
         <FormField
           control={form.control}
           name="address"
@@ -162,7 +162,7 @@ export default function CheckoutForm() {
             </FormItem>
           )}
         />
-        
+
         <div className="grid gap-6 md:grid-cols-2 mb-6">
           <FormField
             control={form.control}
@@ -177,7 +177,7 @@ export default function CheckoutForm() {
               </FormItem>
             )}
           />
-          
+
           <FormField
             control={form.control}
             name="state"
@@ -192,7 +192,7 @@ export default function CheckoutForm() {
             )}
           />
         </div>
-        
+
         <div className="grid gap-6 md:grid-cols-2 mb-6">
           <FormField
             control={form.control}
@@ -207,7 +207,7 @@ export default function CheckoutForm() {
               </FormItem>
             )}
           />
-          
+
           <FormField
             control={form.control}
             name="country"
@@ -222,7 +222,7 @@ export default function CheckoutForm() {
             )}
           />
         </div>
-        
+
         <FormField
           control={form.control}
           name="phoneNumber"
@@ -236,7 +236,7 @@ export default function CheckoutForm() {
             </FormItem>
           )}
         />
-        
+
         <Card className="mb-6">
           <CardContent className="pt-6">
             <h3 className="text-lg font-medium mb-4">Payment Details</h3>
@@ -252,7 +252,7 @@ export default function CheckoutForm() {
             <PaymentElement />
           </CardContent>
         </Card>
-        
+
         <Button 
           type="submit" 
           disabled={isLoading || !stripe || !elements} 

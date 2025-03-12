@@ -779,7 +779,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { amount } = req.body;
       
-      if (!amount || isNaN(Number(amount))) {
+      if (!amount || isNaN(parseFloat(amount))) {
         return res.status(400).json({ message: 'Valid amount is required' });
       }
       
