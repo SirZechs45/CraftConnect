@@ -19,7 +19,7 @@ export interface IStorage {
   updateUser(id: number, updates: Partial<InsertUser>): Promise<User | undefined>;
   updateStripeCustomerId(id: number, stripeCustomerId: string): Promise<User | undefined>;
   getAllUsers(): Promise<User[]>;
-  
+
   // Product methods
   getProduct(id: number): Promise<Product | undefined>;
   getProductsByCategory(category: string): Promise<Product[]>;
@@ -29,7 +29,7 @@ export interface IStorage {
   updateProduct(id: number, updates: Partial<InsertProduct>): Promise<Product | undefined>;
   deleteProduct(id: number): Promise<boolean>;
   getAllProducts(): Promise<Product[]>;
-  
+
   // Order methods
   getOrder(id: number): Promise<Order | undefined>;
   getOrdersByBuyer(buyerId: number): Promise<Order[]>;
@@ -37,18 +37,18 @@ export interface IStorage {
   createOrder(order: InsertOrder, items: InsertOrderItem[]): Promise<Order>;
   updateOrderStatus(id: number, status: string): Promise<Order | undefined>;
   getAllOrders(): Promise<Order[]>;
-  
+
   // Order Item methods
   getOrderItems(orderId: number): Promise<OrderItem[]>;
-  
+
   // Review methods
   getReviewsForProduct(productId: number): Promise<Review[]>;
   createReview(review: InsertReview): Promise<Review>;
-  
+
   // Message methods
   getMessagesBetweenUsers(user1Id: number, user2Id: number): Promise<Message[]>;
   createMessage(message: InsertMessage): Promise<Message>;
-  
+
   // Cart methods
   getCartItems(userId: number): Promise<CartItem[]>;
   addCartItem(cartItem: InsertCartItem): Promise<CartItem>;
@@ -88,7 +88,7 @@ export class MemStorage implements IStorage {
     this.reviewId = 1;
     this.messageId = 1;
     this.cartItemId = 1;
-    
+
     // Create admin user
     this.createUser({
       email: 'admin@artisanbazaar.com',
@@ -133,13 +133,13 @@ export class MemStorage implements IStorage {
   async updateUser(id: number, updates: Partial<InsertUser>): Promise<User | undefined> {
     const user = this.users.get(id);
     if (!user) return undefined;
-    
+
     const updatedUser: User = { 
       ...user, 
       ...updates, 
       updatedAt: new Date() 
     };
-    
+
     this.users.set(id, updatedUser);
     return updatedUser;
   }
@@ -147,13 +147,13 @@ export class MemStorage implements IStorage {
   async updateStripeCustomerId(id: number, stripeCustomerId: string): Promise<User | undefined> {
     const user = this.users.get(id);
     if (!user) return undefined;
-    
+
     const updatedUser: User = { 
       ...user, 
       stripeCustomerId, 
       updatedAt: new Date() 
     };
-    
+
     this.users.set(id, updatedUser);
     return updatedUser;
   }
@@ -204,13 +204,13 @@ export class MemStorage implements IStorage {
   async updateProduct(id: number, updates: Partial<InsertProduct>): Promise<Product | undefined> {
     const product = this.products.get(id);
     if (!product) return undefined;
-    
+
     const updatedProduct: Product = { 
       ...product, 
       ...updates, 
       updatedAt: new Date() 
     };
-    
+
     this.products.set(id, updatedProduct);
     return updatedProduct;
   }
@@ -239,12 +239,12 @@ export class MemStorage implements IStorage {
     // Get all products by this seller
     const sellerProducts = await this.getProductsBySeller(sellerId);
     const sellerProductIds = sellerProducts.map(p => p.id);
-    
+
     // Get all order items for these products
     const relevantOrderItems = Array.from(this.orderItems.values()).filter(
       (item) => sellerProductIds.includes(item.productId)
     );
-    
+
     // Get the orders associated with these items
     const orderIds = [...new Set(relevantOrderItems.map(item => item.orderId))];
     return Array.from(this.orders.values()).filter(
@@ -262,7 +262,7 @@ export class MemStorage implements IStorage {
       updatedAt: now 
     };
     this.orders.set(id, order);
-    
+
     // Create order items
     for (const item of items) {
       const itemId = this.orderItemId++;
@@ -272,7 +272,7 @@ export class MemStorage implements IStorage {
         orderId: order.id 
       };
       this.orderItems.set(itemId, orderItem);
-      
+
       // Update product quantity
       const product = this.products.get(item.productId);
       if (product) {
@@ -282,20 +282,20 @@ export class MemStorage implements IStorage {
         });
       }
     }
-    
+
     return order;
   }
 
   async updateOrderStatus(id: number, orderStatus: string): Promise<Order | undefined> {
     const order = this.orders.get(id);
     if (!order) return undefined;
-    
+
     const updatedOrder: Order = { 
       ...order, 
       orderStatus: orderStatus as any, 
       updatedAt: new Date() 
     };
-    
+
     this.orders.set(id, updatedOrder);
     return updatedOrder;
   }
@@ -363,11 +363,11 @@ export class MemStorage implements IStorage {
     const existingItem = Array.from(this.cartItems.values()).find(
       (item) => item.userId === insertCartItem.userId && item.productId === insertCartItem.productId
     );
-    
+
     if (existingItem) {
       return this.updateCartItemQuantity(existingItem.id, existingItem.quantity + insertCartItem.quantity) as Promise<CartItem>;
     }
-    
+
     const id = this.cartItemId++;
     const cartItem: CartItem = { 
       ...insertCartItem, 
@@ -380,12 +380,12 @@ export class MemStorage implements IStorage {
   async updateCartItemQuantity(id: number, quantity: number): Promise<CartItem | undefined> {
     const cartItem = this.cartItems.get(id);
     if (!cartItem) return undefined;
-    
+
     const updatedCartItem: CartItem = { 
       ...cartItem, 
       quantity 
     };
-    
+
     this.cartItems.set(id, updatedCartItem);
     return updatedCartItem;
   }
@@ -399,11 +399,11 @@ export class MemStorage implements IStorage {
     const userCartItems = Array.from(this.cartItems.values()).filter(
       (item) => item.userId === userId
     );
-    
+
     for (const item of userCartItems) {
       this.cartItems.delete(item.id);
     }
-    
+
     return true;
   }
 }
@@ -622,15 +622,17 @@ export class DatabaseStorage implements IStorage {
     try {
       // Create the order
       const [order] = await db.insert(orders).values(orderData).returning();
-      
+
       // Create the order items with the new order ID
       for (const item of items) {
+        // Ensure unitPrice is stored as string
         await db.insert(orderItems).values({
           ...item,
-          orderId: order.id
+          orderId: order.id,
+          unitPrice: String(item.unitPrice)
         });
       }
-      
+
       return order;
     } catch (error) {
       console.error("Error creating order:", error);
