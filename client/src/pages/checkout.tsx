@@ -3,7 +3,7 @@ import { useLocation } from 'wouter';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements } from '@stripe/react-stripe-js';
 import { useCart } from '@/hooks/useCart';
-import { useAuth } from '@/lib/auth';
+import { useAuth } from '@/hooks/use-auth';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 
