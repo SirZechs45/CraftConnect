@@ -1,0 +1,217 @@
+Project Overview:
+Goal: Build a multi-vendor handicrafts marketplace with extremely awesome and attractive and modern aesthetic responsive ui and ux supporting C2C, B2C, and B2B sales.
+Key Features:
+Sellers specify quantity and bulk order terms.
+Role-based system with Buyers, Sellers, and Admins.
+Horizontally scalable using Next.js serverless functions on Vercel.
+
+1. Project Setup
+Tech Stack & Deployment:
+Next.js for frontend & serverless API routes.
+Supabase (free tier) for PostgreSQL database and user authentication (optionally integrated with NextAuth.js).
+NextAuth.js for authentication (email or OAuth providers).
+Cloudinary (free tier) for image hosting (or fallback to Vercel’s built-in static file hosting).
+Vercel for deployment, leveraging automatic serverless scaling.
+Optional: If using Supabase Auth, either integrate with NextAuth.js or rely solely on Supabase’s auth. If you prefer Firebase for NoSQL, adapt accordingly.
+Payment Gateway api like stripe or something else is necessary for payments
+Folder Structure:
+/pages: Public and protected Next.js pages (home, product listings, dashboards).
+/pages/api: Serverless API routes acting as microservices (e.g., /api/auth, /api/products, /api/orders, /api/inventory, /api/admin).
+/components: Reusable UI components (headers, footers, product cards).
+/lib: Utility functions, database connectors (Supabase client, Prisma setup, or direct SQL queries).
+/styles: Global and component-level CSS/SCSS files.
+/public: Public assets (if needed).
+Environment Variables:
+NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY (for Supabase).
+DATABASE_URL if using Prisma or a direct Postgres connection.
+NEXTAUTH_SECRET for NextAuth.js sessions.
+CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET for image uploads.
+STRIPE_TEST_KEY for test payment integration (optional).
+
+2. Data Models
+Please implement the following database schema (or adapt to your chosen ORM):
+Users
+
+
+id (UUID/serial)
+email (string)
+password (hashed, if using manual auth)
+role (enum: buyer, seller, admin)
+name (string)
+created_at, updated_at
+Products
+
+
+id (UUID/serial)
+seller_id (references Users)
+title (string)
+description (text)
+price (numeric)
+quantity_available (int)
+images (array of strings/URLs)
+created_at, updated_at
+Orders
+
+
+id (UUID/serial)
+buyer_id (references Users)
+total_amount (numeric)
+order_status (enum: pending, processing, shipped, delivered, cancelled)
+created_at, updated_at
+OrderItems
+
+
+id (UUID/serial)
+order_id (references Orders)
+product_id (references Products)
+quantity (int)
+unit_price (numeric)
+Reviews
+
+
+id (UUID/serial)
+product_id (references Products)
+buyer_id (references Users)
+rating (int)
+comment (text)
+created_at
+Messages
+
+
+id (UUID/serial)
+sender_id (references Users)
+receiver_id (references Users)
+content (text)
+created_at
+(Adjust field types and relationships as needed. You may store messages in a NoSQL structure if you prefer.)
+
+3. User Roles & Flows
+Buyer Flow:
+Registration & Login:
+Sign up with email/password or OAuth.
+Authenticated via NextAuth.js or Supabase Auth.
+Browsing & Searching Products:
+Landing page with featured items.
+Filter by category, price, quantity, etc.
+Cart & Checkout:
+Add items to cart, adjust quantities.
+Proceed to checkout, provide shipping details, choose payment method (test Stripe integration).
+Order Tracking & Reviews:
+View order status (pending, shipped, delivered).
+Submit reviews and ratings after purchase.
+Seller Flow:
+Seller Registration & Verification:
+Register as a seller; possibly upload verification documents (optional).
+Manage Products & Inventory:
+Create new product listings, upload images to Cloudinary.
+Set prices, available quantity, bulk order terms.
+Update inventory levels in real-time.
+Order Fulfillment:
+View incoming orders, update status (processing, shipped, delivered).
+Communicate with buyers if needed (messaging).
+Analytics & Reporting:
+Basic sales data (orders, revenue), product performance, inventory alerts.
+Admin Flow:
+Admin Dashboard:
+Manage users (approve or ban sellers, handle buyer issues).
+Moderate product listings (approve or remove).
+Oversee orders and handle disputes.
+Platform Analytics:
+View aggregated data: total sales, active users, top products.
+Access advanced reporting (e.g., monthly revenue, user growth).
+
+4. Core Features & API Routes
+Implement each feature as Next.js serverless API routes under /pages/api, ensuring role-based access checks:
+Authentication (/api/auth)
+NextAuth.js config ([...nextauth].js) or Supabase’s built-in auth.
+Products (/api/products)
+POST /api/products (create new product – seller only).
+GET /api/products (list/search products – open to all).
+GET /api/products/[id] (product detail).
+PUT /api/products/[id] (update product – seller only).
+DELETE /api/products/[id] (delete product – seller only).
+Orders (/api/orders)
+POST /api/orders (create order – buyer only).
+GET /api/orders (list user orders – buyer sees own, seller sees orders for products they own, admin sees all).
+PATCH /api/orders/[id] (update status – seller/admin only).
+Inventory (/api/inventory)
+PATCH /api/inventory/[productId] (update quantity – seller only).
+Reviews (/api/reviews)
+POST /api/reviews (submit review – buyer only).
+GET /api/reviews?productId=xxx (fetch product reviews).
+Messaging (/api/messages)
+POST /api/messages (send message).
+GET /api/messages (retrieve conversations).
+Admin (/api/admin)
+GET /api/admin/users (list all users).
+PATCH /api/admin/users/[id] (update user roles, ban user).
+GET /api/admin/analytics (retrieve platform metrics).
+
+5. Horizontal Scalability & Architecture
+Serverless Deployment on Vercel:
+Each /api/* endpoint is an auto-scaling serverless function.
+Supabase PostgreSQL:
+Scales up to free usage limits; store relational data (users, products, orders).
+Cloudinary for Images:
+Offload image hosting and transformation; free tier for small volumes.
+Caching / Asynchronous Tasks (Optional):
+For large-scale messaging or order notifications, integrate a free message queue or use background serverless functions.
+Security & Environment Variables:
+Store secrets in Vercel’s environment settings.
+Testing & Monitoring:
+Use Jest and React Testing Library for unit tests.
+Rely on Vercel’s built-in monitoring and add Sentry for error tracking if desired.
+
+6. Implementation Instructions
+Bootstrap the Next.js App:
+ bash
+CopyEdit
+npx create-next-app@latest handicrafts-marketplace
+cd handicrafts-marketplace
+
+
+Install Dependencies:
+ bash
+CopyEdit
+npm install next-auth supabase @supabase/supabase-js prisma @prisma/client \
+            cloudinary stripe (optional) react-hook-form \
+            react-query (or SWR) @heroicons/react (optional UI icons)
+
+
+Configure Supabase & Prisma (if using Prisma):
+Create prisma/schema.prisma to define the data models.
+Migrate your database: npx prisma migrate dev --name init.
+Set Up NextAuth.js:
+Create /pages/api/auth/[...nextauth].js.
+Configure providers (Email, Google, etc.) and callbacks for user roles.
+Build Core Pages & Components:
+Home Page (pages/index.js): Display featured products, categories.
+Product Pages (pages/products/[id].js): Show product details, reviews.
+Seller Dashboard (pages/dashboard/seller/*.js): Manage products, inventory, orders.
+Admin Dashboard (pages/dashboard/admin/*.js): Manage users, listings, disputes.
+Implement API Routes:
+/pages/api/products/*.js, /api/orders/*.js, /api/inventory/*.js, etc.
+Enforce role-based checks (e.g., only sellers can create products).
+Integrate Cloudinary for Image Uploads:
+Use cloudinary.uploader.upload(filePath) in serverless routes or direct from client with a signed upload preset.
+Payment Integration (Optional):
+Create a test checkout flow using Stripe test keys.
+Testing & Deployment:
+Write basic tests for API routes (Jest).
+Deploy to Vercel; set environment variables in the project settings.
+Verify all routes and flows in production.
+
+7. Final Deliverable
+Request:
+“Please generate the entire Next.js codebase with the structure, pages, API routes, data models (using Prisma or direct SQL queries), and configurations described above. Ensure that the solution includes:
+Proper environment variable usage.
+Role-based NextAuth.js or Supabase Auth integration.
+CRUD operations for Products, Orders, Inventory, Reviews, and Messages.
+Admin dashboard routes and pages.
+Seller dashboard routes and pages.
+Buyer-facing product browsing, cart, and checkout.
+Horizontal scalability via serverless functions on Vercel.
+Optional test payment integration with Stripe (test mode).
+Cloudinary integration for image uploads.
+Clear inline comments explaining key parts of the code.”
+Important: Output the complete code in a single structured format (multiple files/folders) or clearly delineated code blocks so we can directly copy and set up the repository.
