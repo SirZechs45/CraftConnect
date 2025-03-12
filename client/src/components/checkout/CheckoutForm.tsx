@@ -264,3 +264,137 @@ export default function CheckoutForm() {
     </Form>
   );
 }
+import { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { useCart } from '@/lib/cart';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
+
+export function CheckoutForm({ total }: { total: number }) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [clientSecret, setClientSecret] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const { cartItems, placeOrder, clearCart } = useCart();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // Create PaymentIntent as soon as the page loads
+    if (total > 0) {
+      fetch('/api/create-payment-intent', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ amount: total }),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          setClientSecret(data.clientSecret);
+        })
+        .catch((err) => {
+          setErrorMessage('Failed to initialize payment: ' + err.message);
+        });
+    }
+  }, [total]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!stripe || !elements) {
+      // Stripe.js hasn't loaded yet. Make sure to disable
+      // form submission until Stripe.js has loaded.
+      return;
+    }
+
+    setIsLoading(true);
+    setErrorMessage(null);
+
+    try {
+      const cardElement = elements.getElement(CardElement);
+      if (!cardElement) {
+        throw new Error('Card element not found');
+      }
+
+      // Confirm the payment
+      const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+        payment_method: {
+          card: cardElement,
+          billing_details: {
+            // You can add billing details here if needed
+          },
+        },
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Payment failed');
+      } else if (paymentIntent && paymentIntent.status === 'succeeded') {
+        // Payment succeeded, now place the order
+        const orderItems = cartItems.map(item => ({
+          productId: item.productId,
+          quantity: item.quantity,
+          unitPrice: item.product.price,
+        }));
+
+        try {
+          await placeOrder(orderItems);
+          await clearCart();
+          toast.success('Order placed successfully!');
+          
+          // Use navigate instead of direct location modification
+          navigate('/order-confirmation', { 
+            state: { 
+              paymentId: paymentIntent.id,
+              paymentClientSecret: clientSecret 
+            }
+          });
+        } catch (orderError: any) {
+          throw new Error(`Payment succeeded but order failed: ${orderError.message}`);
+        }
+      }
+    } catch (error: any) {
+      console.error('Payment error:', error);
+      setErrorMessage(error.message || 'An unexpected error occurred');
+      toast.error(error.message || 'Payment failed');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      {errorMessage && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+          {errorMessage}
+        </div>
+      )}
+      
+      <div className="p-4 border rounded-md bg-card">
+        <CardElement options={{
+          style: {
+            base: {
+              fontSize: '16px',
+              color: '#424770',
+              '::placeholder': {
+                color: '#aab7c4',
+              },
+            },
+            invalid: {
+              color: '#9e2146',
+            },
+          },
+        }} />
+      </div>
+      
+      <Button 
+        type="submit" 
+        disabled={!stripe || isLoading} 
+        className="w-full"
+      >
+        {isLoading ? 'Processing...' : `Pay $${total.toFixed(2)}`}
+      </Button>
+    </form>
+  );
+}
