@@ -798,7 +798,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           integration_type: 'marketplace',
           environment: process.env.NODE_ENV || 'development'
         },
-        payment_method_types: ['card'], // Explicitly specify payment method types
+        //payment_method_types: ['card'], // Explicitly specify payment method types
         // Use automatic payment methods in test mode
         automatic_payment_methods: {
           enabled: true
