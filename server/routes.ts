@@ -559,17 +559,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Validate all items
       for (const item of items) {
-        const validatedItem = insertOrderItemSchema.omit({ orderId: true }).parse(item);
-        
-        // Check if product exists and has enough quantity
-        const product = await storage.getProduct(validatedItem.productId);
-        if (!product) {
-          return res.status(404).json({ message: `Product with ID ${validatedItem.productId} not found` });
-        }
-        
-        if (+product.quantityAvailable < +validatedItem.quantity) {
+        try {
+          // Ensure unitPrice is handled as a string for Zod validation
+          const itemToValidate = {
+            ...item,
+            unitPrice: item.unitPrice ? String(item.unitPrice) : item.unitPrice
+          };
+          
+          const validatedItem = insertOrderItemSchema.omit({ orderId: true }).parse(itemToValidate);
+          
+          // Check if product exists and has enough quantity
+          const product = await storage.getProduct(validatedItem.productId);
+          if (!product) {
+            return res.status(404).json({ message: `Product with ID ${validatedItem.productId} not found` });
+          }
+          
+          if (+product.quantityAvailable < +validatedItem.quantity) {
+            return res.status(400).json({ 
+              message: `Not enough quantity for product ${product.title}. Available: ${product.quantityAvailable}` 
+            });
+          }
+        } catch (validationError) {
+          console.error('Item validation error:', validationError);
           return res.status(400).json({ 
-            message: `Not enough quantity for product ${product.title}. Available: ${product.quantityAvailable}` 
+            message: validationError.message || 'Item validation error',
+            details: validationError.errors || validationError
           });
         }
       }
