@@ -1,113 +1,3 @@
-import { pgTable, text, serial, numeric, integer, boolean, timestamp, pgEnum } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
-import { z } from "zod";
-
-// Enums
-export const userRoleEnum = pgEnum('user_role', ['buyer', 'seller', 'admin']);
-export const orderStatusEnum = pgEnum('order_status', ['pending', 'processing', 'shipped', 'delivered', 'cancelled']);
-
-// Users Table
-export const users = pgTable("users", {
-  id: serial("id").primaryKey(),
-  email: text("email").notNull().unique(),
-  username: text("username").notNull().unique(),
-  password: text("password").notNull(),
-  role: userRoleEnum("role").default('buyer').notNull(),
-  name: text("name").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-  stripeCustomerId: text("stripe_customer_id"),
-});
-
-// Products Table
-export const products = pgTable("products", {
-  id: serial("id").primaryKey(),
-  sellerId: integer("seller_id").references(() => users.id).notNull(),
-  title: text("title").notNull(),
-  description: text("description").notNull(),
-  price: numeric("price").notNull(),
-  quantityAvailable: integer("quantity_available").notNull(),
-  images: text("images").array().notNull(),
-  category: text("category").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
-
-// Orders Table
-export const orders = pgTable("orders", {
-  id: serial("id").primaryKey(),
-  buyerId: integer("buyer_id").references(() => users.id).notNull(),
-  totalAmount: numeric("total_amount").notNull(),
-  orderStatus: orderStatusEnum("order_status").default('pending').notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
-
-// Order Items Table
-export const orderItems = pgTable("order_items", {
-  id: serial("id").primaryKey(),
-  orderId: integer("order_id").references(() => orders.id).notNull(),
-  productId: integer("product_id").references(() => products.id).notNull(),
-  quantity: integer("quantity").notNull(),
-  unitPrice: numeric("unit_price").notNull(),
-});
-
-// Reviews Table
-export const reviews = pgTable("reviews", {
-  id: serial("id").primaryKey(),
-  productId: integer("product_id").references(() => products.id).notNull(),
-  buyerId: integer("buyer_id").references(() => users.id).notNull(),
-  rating: integer("rating").notNull(),
-  comment: text("comment").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-
-// Messages Table
-export const messages = pgTable("messages", {
-  id: serial("id").primaryKey(),
-  senderId: integer("sender_id").references(() => users.id).notNull(),
-  receiverId: integer("receiver_id").references(() => users.id).notNull(),
-  content: text("content").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-
-// Cart Items Table
-export const cartItems = pgTable("cart_items", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").references(() => users.id).notNull(),
-  productId: integer("product_id").references(() => products.id).notNull(),
-  quantity: integer("quantity").notNull(),
-});
-
-// Zod Schemas
-export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true, updatedAt: true, stripeCustomerId: true });
-export const insertProductSchema = createInsertSchema(products).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertOrderSchema = createInsertSchema(orders).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertOrderItemSchema = createInsertSchema(orderItems)
-  .omit({ id: true })
-  .transform((data) => ({
-    ...data,
-    unitPrice: String(data.unitPrice) // Ensure unitPrice is always a string
-  }));
-export const insertReviewSchema = createInsertSchema(reviews).omit({ id: true, createdAt: true });
-export const insertMessageSchema = createInsertSchema(messages).omit({ id: true, createdAt: true });
-export const insertCartItemSchema = createInsertSchema(cartItems).omit({ id: true });
-
-// Types
-export type User = typeof users.$inferSelect;
-export type InsertUser = z.infer<typeof insertUserSchema>;
-export type Product = typeof products.$inferSelect;
-export type InsertProduct = z.infer<typeof insertProductSchema>;
-export type Order = typeof orders.$inferSelect;
-export type InsertOrder = z.infer<typeof insertOrderSchema>;
-export type OrderItem = typeof orderItems.$inferSelect;
-export type InsertOrderItem = z.infer<typeof insertOrderItemSchema>;
-export type Review = typeof reviews.$inferSelect;
-export type InsertReview = z.infer<typeof insertReviewSchema>;
-export type Message = typeof messages.$inferSelect;
-export type InsertMessage = z.infer<typeof insertMessageSchema>;
-export type CartItem = typeof cartItems.$inferSelect;
-export type InsertCartItem = z.infer<typeof insertCartItemSchema>;
 import { z } from "zod";
 import { sql } from "drizzle-orm";
 import { 
@@ -120,10 +10,15 @@ import {
   varchar, 
   decimal, 
   uniqueIndex,
-  primaryKey
+  primaryKey,
+  pgEnum
 } from 'drizzle-orm/pg-core';
 
 export const createTable = pgTableCreator((name) => `artisan_bazaar_${name}`);
+
+// Enums
+export const userRoleEnum = pgEnum('user_role', ['buyer', 'seller', 'admin']);
+export const orderStatusEnum = pgEnum('order_status', ['pending', 'processing', 'shipped', 'delivered', 'cancelled']);
 
 // Users table
 export const users = createTable('users', {
@@ -135,6 +30,7 @@ export const users = createTable('users', {
   role: varchar('role', { length: 50 }).notNull().default('buyer'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  stripeCustomerId: varchar('stripe_customer_id', { length: 255 }),
 });
 
 // Products table
@@ -143,7 +39,7 @@ export const products = createTable('products', {
   title: varchar('title', { length: 255 }).notNull(),
   description: text('description'),
   price: decimal('price', { precision: 10, scale: 2 }).notNull(),
-  imageUrl: varchar('image_url', { length: 1000 }),
+  images: text('images').array().notNull(),
   category: varchar('category', { length: 100 }).notNull(),
   quantityAvailable: integer('quantity_available').notNull().default(0),
   sellerId: integer('seller_id').notNull().references(() => users.id),
@@ -155,8 +51,8 @@ export const products = createTable('products', {
 export const orders = createTable('orders', {
   id: serial('id').primaryKey(),
   buyerId: integer('buyer_id').notNull().references(() => users.id),
-  status: varchar('status', { length: 50 }).notNull().default('pending'),
-  total: decimal('total', { precision: 10, scale: 2 }).notNull(),
+  orderStatus: varchar('status', { length: 50 }).notNull().default('pending'),
+  totalAmount: decimal('total_amount', { precision: 10, scale: 2 }).notNull(),
   shippingAddress: text('shipping_address'),
   paymentIntentId: varchar('payment_intent_id', { length: 255 }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -170,8 +66,6 @@ export const orderItems = createTable('order_items', {
   productId: integer('product_id').notNull().references(() => products.id),
   quantity: integer('quantity').notNull(),
   unitPrice: decimal('unit_price', { precision: 10, scale: 2 }).notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
 // Reviews table
@@ -182,7 +76,6 @@ export const reviews = createTable('reviews', {
   rating: integer('rating').notNull(),
   comment: text('comment'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
 // Messages table
@@ -193,7 +86,6 @@ export const messages = createTable('messages', {
   content: text('content').notNull(),
   isRead: boolean('is_read').notNull().default(false),
   createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
 // Cart items table
@@ -202,8 +94,6 @@ export const cartItems = createTable('cart_items', {
   userId: integer('user_id').notNull().references(() => users.id),
   productId: integer('product_id').notNull().references(() => products.id),
   quantity: integer('quantity').notNull().default(1),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
 // Define schemas for validation
@@ -219,7 +109,7 @@ export const insertProductSchema = z.object({
   title: z.string().min(1).max(255),
   description: z.string().optional(),
   price: z.string(), // Handle as string to avoid precision issues
-  imageUrl: z.string().url().max(1000).optional(),
+  images: z.array(z.string()).min(1),
   category: z.string().min(1).max(100),
   quantityAvailable: z.number().int().min(0),
   sellerId: z.number().int(),
@@ -227,8 +117,8 @@ export const insertProductSchema = z.object({
 
 export const insertOrderSchema = z.object({
   buyerId: z.number().int(),
-  status: z.enum(['pending', 'processing', 'shipped', 'delivered', 'cancelled']).default('pending'),
-  total: z.string(), // Handle as string to avoid precision issues
+  orderStatus: z.enum(['pending', 'processing', 'shipped', 'delivered', 'cancelled']).default('pending'),
+  totalAmount: z.string(), // Handle as string to avoid precision issues
   shippingAddress: z.string().optional(),
   paymentIntentId: z.string().optional(),
 });
