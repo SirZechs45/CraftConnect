@@ -566,7 +566,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             unitPrice: item.unitPrice ? String(item.unitPrice) : item.unitPrice
           };
           
-          const validatedItem = insertOrderItemSchema.omit({ orderId: true }).parse(itemToValidate);
+          // Create a new schema without orderId for validation
+          const orderItemWithoutOrderIdSchema = z.object({
+            productId: z.number(),
+            quantity: z.number().min(1),
+            unitPrice: z.string(),
+          });
+          
+          const validatedItem = orderItemWithoutOrderIdSchema.parse(itemToValidate);
           
           // Check if product exists and has enough quantity
           const product = await storage.getProduct(validatedItem.productId);
