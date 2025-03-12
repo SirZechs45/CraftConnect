@@ -19,9 +19,12 @@ import {
 import Stripe from "stripe";
 
 // Stripe setup
-const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || 'sk_test_your_test_key';
+if (!process.env.STRIPE_SECRET_KEY) {
+  console.error('Missing STRIPE_SECRET_KEY environment variable');
+}
+const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || '';
 const stripe = new Stripe(STRIPE_SECRET_KEY, {
-  apiVersion: '2023-10-16',
+  apiVersion: '2023-10-16',  // This should be updated if required
 });
 
 // Session setup with PostgreSQL store for persistence
