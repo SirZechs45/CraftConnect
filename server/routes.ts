@@ -23,8 +23,10 @@ if (!process.env.STRIPE_SECRET_KEY) {
   console.error('Missing STRIPE_SECRET_KEY environment variable');
 }
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || '';
+// Initialize Stripe with proper configuration for version 17
 const stripe = new Stripe(STRIPE_SECRET_KEY, {
-  apiVersion: '2023-10-16',  // This should be updated if required
+  apiVersion: '2023-10-16',  // Compatible with Stripe.js v6
+  typescript: true,
 });
 
 // Session setup with PostgreSQL store for persistence
@@ -786,7 +788,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(500).json({ message: 'Stripe payment service is not configured' });
       }
       
-      // Create a payment intent with additional metadata for tracking
+      // Create a payment intent with improved options for test mode
       const paymentIntent = await stripe.paymentIntents.create({
         amount: Math.round(Number(amount) * 100), // Convert to cents
         currency: 'usd',
@@ -796,6 +798,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           integration_type: 'marketplace',
           environment: process.env.NODE_ENV || 'development'
         },
+        payment_method_types: ['card'], // Explicitly specify payment method types
         // Use automatic payment methods in test mode
         automatic_payment_methods: {
           enabled: true

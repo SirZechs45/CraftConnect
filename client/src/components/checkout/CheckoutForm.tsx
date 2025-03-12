@@ -240,6 +240,15 @@ export default function CheckoutForm() {
         <Card className="mb-6">
           <CardContent className="pt-6">
             <h3 className="text-lg font-medium mb-4">Payment Details</h3>
+            <div className="bg-yellow-50 p-3 mb-4 rounded-md border border-yellow-200">
+              <p className="text-sm text-yellow-800 font-medium">Test Mode Instructions</p>
+              <ul className="text-xs text-yellow-700 list-disc pl-4 mt-1">
+                <li>Use card number: <span className="font-mono">4242 4242 4242 4242</span></li>
+                <li>Any future expiration date (MM/YY)</li>
+                <li>Any 3 digits for CVC</li>
+                <li>Any 5 digits for postal code</li>
+              </ul>
+            </div>
             <PaymentElement />
           </CardContent>
         </Card>
