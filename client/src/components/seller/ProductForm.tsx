@@ -99,7 +99,7 @@ export default function ProductForm({ product, onSuccess }: ProductFormProps) {
         sellerId: user.id,
         title: values.title,
         description: values.description,
-        price: parseFloat(values.price),
+        price: values.price, // Keep as string to match schema expectation
         quantityAvailable: parseInt(values.quantityAvailable),
         category: values.category,
         images: values.images,
