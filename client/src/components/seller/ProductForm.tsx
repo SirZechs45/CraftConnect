@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -64,11 +64,10 @@ interface ProductFormProps {
 export default function ProductForm({ product, onSuccess }: ProductFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [imageUrls, setImageUrls] = useState<string[]>(product?.images || []);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { user } = useAuth();
-
-  // Temporary image for testing
-  const placeholderImage = "https://images.unsplash.com/photo-1610374792793-f016b77ca51a";
 
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productFormSchema),
@@ -146,10 +145,72 @@ export default function ProductForm({ product, onSuccess }: ProductFormProps) {
   };
 
   const handleImageUpload = () => {
-    // In a real application, this would upload to Cloudinary
-    // For now, just add a placeholder image
-    setImageUrls([...imageUrls, placeholderImage]);
-    form.setValue("images", [...imageUrls, placeholderImage]);
+    // Trigger hidden file input click
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+  
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    // Only accept images
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Invalid File Type",
+        description: "Please upload an image file (JPEG, PNG, etc.)",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    try {
+      setUploadingImage(true);
+      
+      // Create form data
+      const formData = new FormData();
+      formData.append('image', file);
+      
+      // Upload image
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to upload image');
+      }
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        // Add image URL to form state
+        const newUrls = [...imageUrls, data.imageUrl];
+        setImageUrls(newUrls);
+        form.setValue("images", newUrls);
+        
+        toast({
+          title: "Image Uploaded",
+          description: "Image has been successfully uploaded",
+        });
+      } else {
+        throw new Error(data.message || 'Failed to upload image');
+      }
+    } catch (error: any) {
+      toast({
+        title: "Upload Failed",
+        description: error.message || "An error occurred while uploading the image",
+        variant: "destructive",
+      });
+    } finally {
+      setUploadingImage(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
   };
 
   const removeImage = (index: number) => {
@@ -301,7 +362,16 @@ export default function ProductForm({ product, onSuccess }: ProductFormProps) {
           )}
         />
         
-        <Button type="submit" className="w-full" disabled={isLoading}>
+        {/* Hidden file input for image uploading */}
+        <input
+          type="file"
+          ref={fileInputRef}
+          accept="image/*"
+          onChange={handleFileChange}
+          className="hidden"
+        />
+        
+        <Button type="submit" className="w-full" disabled={isLoading || uploadingImage}>
           {isLoading ? "Saving..." : (product ? "Update Product" : "Create Product")}
         </Button>
       </form>

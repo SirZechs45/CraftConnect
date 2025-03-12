@@ -1,11 +1,12 @@
-import type { Express, Request, Response } from "express";
+import express, { type Express, type Request, type Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import bcrypt from "bcrypt";
 import session from "express-session";
-import MemoryStore from "memorystore";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
 import { z } from "zod";
-import { zValidator } from "@hono/zod-validator";
 import { 
   insertUserSchema, 
   insertProductSchema, 
@@ -27,7 +28,49 @@ const stripe = new Stripe(STRIPE_SECRET_KEY, {
 import pgSession from 'connect-pg-simple';
 const PostgresStore = pgSession(session);
 
+// Configure multer for file uploads
+const uploadsDir = path.join(process.cwd(), "uploads");
+const productsDir = path.join(uploadsDir, "products");
+
+// Ensure directories exist
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+if (!fs.existsSync(productsDir)) {
+  fs.mkdirSync(productsDir, { recursive: true });
+}
+
+// Setup multer storage
+const uploadStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, productsDir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    cb(null, uniqueSuffix + ext);
+  }
+});
+
+// Create multer upload instance
+const upload = multer({
+  storage: uploadStorage,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB limit
+  },
+  fileFilter: function (req, file, cb) {
+    // Accept only images
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed') as any);
+    }
+  }
+});
+
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Serve uploaded files statically
+  app.use('/uploads', express.static(uploadsDir));
   // Setup session with Postgres for persistence
   app.use(session({
     store: new PostgresStore({
@@ -384,6 +427,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     } catch (error) {
       res.status(400).json({ message: error.message });
+    }
+  });
+
+  // Image Upload API
+  app.post('/api/upload', isAuthenticated, upload.single('image'), async (req, res) => {
+    try {
+      // Check if file exists
+      if (!req.file) {
+        return res.status(400).json({ message: 'No file uploaded' });
+      }
+
+      // Return the path to the uploaded file
+      const serverUrl = `${req.protocol}://${req.get('host')}`;
+      const filePath = `/uploads/products/${req.file.filename}`;
+      const fileUrl = `${serverUrl}${filePath}`;
+
+      res.json({
+        success: true,
+        imageUrl: fileUrl,
+        filePath: filePath
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false, 
+        message: 'Error uploading file',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
   });
 
