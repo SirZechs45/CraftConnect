@@ -87,6 +87,12 @@ export default function SellerProducts() {
   // Fetch seller products
   const { data: products = [], isLoading } = useQuery<Product[]>({
     queryKey: ["/api/products", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const response = await apiRequest("GET", `/api/products?sellerId=${user.id}`);
+      const data = await response.json();
+      return data;
+    },
     enabled: !!user,
   });
 
@@ -100,7 +106,7 @@ export default function SellerProducts() {
         title: "Product Deleted",
         description: "Product has been successfully deleted",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/products", user?.id] });
       setIsDeleteDialogOpen(false);
     },
     onError: (error: any) => {
@@ -320,7 +326,7 @@ export default function SellerProducts() {
           <ProductForm 
             onSuccess={() => {
               setIsNewProductModalOpen(false);
-              queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+              queryClient.invalidateQueries({ queryKey: ["/api/products", user?.id] });
             }} 
           />
         </DialogContent>
@@ -341,7 +347,7 @@ export default function SellerProducts() {
               onSuccess={() => {
                 setIsEditModalOpen(false);
                 setSelectedProduct(null);
-                queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+                queryClient.invalidateQueries({ queryKey: ["/api/products", user?.id] });
               }} 
             />
           )}
