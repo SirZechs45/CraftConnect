@@ -547,7 +547,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Order must include items' });
       }
       
-      const orderData = insertOrderSchema.parse(order);
+      console.log('Received order data:', JSON.stringify(order));
+      
+      try {
+        const orderData = insertOrderSchema.parse(order);
       
       // Ensure the buyer is the logged in user
       if (orderData.buyerId !== req.session.userId) {
@@ -578,8 +581,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.clearCart(req.session.userId);
       
       res.status(201).json(newOrder);
+      } catch (validationError) {
+        console.error('Order validation error:', validationError);
+        return res.status(400).json({ 
+          message: validationError.message || 'Validation error',
+          details: validationError.errors || validationError
+        });
+      }
     } catch (error) {
-      res.status(400).json({ message: error.message });
+      console.error('Order creation error:', error);
+      res.status(400).json({ 
+        message: error.message || 'Error creating order',
+        details: error.errors || error
+      });
     }
   });
 
@@ -788,9 +802,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(500).json({ message: 'Stripe payment service is not configured' });
       }
       
+      console.log('Creating payment intent with amount:', amount, 'Type:', typeof amount);
+      
       // Create a payment intent with improved options for test mode
       const paymentIntent = await stripe.paymentIntents.create({
-        amount: Math.round(parseFloat(String(amount)) * 100), // Convert to cents
+        amount: Math.round(parseFloat(String(amount)) * 100), // Convert to cents and ensure integer
         currency: 'usd',
         // Add metadata to help identify the payment
         metadata: {
