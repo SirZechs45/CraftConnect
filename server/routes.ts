@@ -781,16 +781,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Valid amount is required' });
       }
       
+      // Check if Stripe API key is available
+      if (!process.env.STRIPE_SECRET_KEY) {
+        return res.status(500).json({ message: 'Stripe payment service is not configured' });
+      }
+      
+      // Create a payment intent with additional metadata for tracking
       const paymentIntent = await stripe.paymentIntents.create({
         amount: Math.round(Number(amount) * 100), // Convert to cents
         currency: 'usd',
+        // Add metadata to help identify the payment
+        metadata: {
+          user_id: req.session.userId?.toString() || 'unknown',
+          integration_type: 'marketplace',
+          environment: process.env.NODE_ENV || 'development'
+        },
+        // Use automatic payment methods in test mode
+        automatic_payment_methods: {
+          enabled: true
+        }
       });
+      
+      console.log(`Payment intent created: ${paymentIntent.id}`);
       
       res.json({
         clientSecret: paymentIntent.client_secret
       });
     } catch (error) {
-      res.status(400).json({ message: error.message });
+      console.error('Error creating payment intent:', error);
+      res.status(400).json({ 
+        message: error instanceof Error ? error.message : 'Unknown payment processing error' 
+      });
     }
   });
 

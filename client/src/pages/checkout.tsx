@@ -18,6 +18,9 @@ import { Link } from 'wouter';
 // Make sure to call loadStripe outside of a component's render to avoid
 // recreating the Stripe object on every render
 // Environment variables should be prefixed with VITE_ to be accessible in the frontend
+if (!import.meta.env.VITE_STRIPE_PUBLIC_KEY) {
+  console.warn('VITE_STRIPE_PUBLIC_KEY is not set. Stripe payments will not work correctly.');
+}
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY || '');
 
 export default function Checkout() {

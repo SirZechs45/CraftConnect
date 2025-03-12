@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { useCart } from "@/hooks/useCart";
+import { useAuth } from "@/lib/auth";
 import { apiRequest } from "@/lib/queryClient";
 
 import {
@@ -39,6 +40,7 @@ export default function CheckoutForm() {
   const { toast } = useToast();
   const [_, navigate] = useLocation();
   const { cartTotal, cartItems, clearCart } = useCart();
+  const { user } = useAuth();
   
   const stripe = useStripe();
   const elements = useElements();
@@ -68,7 +70,7 @@ export default function CheckoutForm() {
       // Create order in database
       const orderData = {
         order: {
-          buyerId: 1, // Replace with actual user ID from auth context
+          buyerId: user?.id || 0, // Get user ID from auth context
           totalAmount: cartTotal,
           orderStatus: "pending",
         },
