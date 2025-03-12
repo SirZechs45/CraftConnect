@@ -13,6 +13,7 @@ import ProductDetail from "@/pages/products/[id]";
 import Checkout from "@/pages/checkout";
 import SellerDashboard from "@/pages/dashboard/seller/index";
 import SellerProducts from "@/pages/dashboard/seller/products";
+import NewProduct from "@/pages/dashboard/seller/products/new";
 import SellerOrders from "@/pages/dashboard/seller/orders";
 import AdminDashboard from "@/pages/dashboard/admin/index";
 import AdminUsers from "@/pages/dashboard/admin/users";
@@ -33,6 +34,7 @@ function Router() {
       {/* Seller Routes */}
       <Route path="/dashboard/seller" component={SellerDashboard} />
       <Route path="/dashboard/seller/products" component={SellerProducts} />
+      <Route path="/dashboard/seller/products/new" component={NewProduct} />
       <Route path="/dashboard/seller/orders" component={SellerOrders} />
       
       {/* Admin Routes */}
