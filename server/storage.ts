@@ -7,6 +7,8 @@ import {
   messages, type Message, type InsertMessage,
   cartItems, type CartItem, type InsertCartItem
 } from "@shared/schema";
+import { db } from "./db";
+import { eq, like, or, and } from "drizzle-orm";
 
 export interface IStorage {
   // User methods
@@ -406,4 +408,377 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+// Database implementation
+export class DatabaseStorage implements IStorage {
+  // User methods
+  async getUser(id: number): Promise<User | undefined> {
+    try {
+      const [user] = await db.select().from(users).where(eq(users.id, id));
+      return user;
+    } catch (error) {
+      console.error("Error getting user:", error);
+      return undefined;
+    }
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    try {
+      const [user] = await db.select().from(users).where(eq(users.email, email));
+      return user;
+    } catch (error) {
+      console.error("Error getting user by email:", error);
+      return undefined;
+    }
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    try {
+      const [user] = await db.select().from(users).where(eq(users.username, username));
+      return user;
+    } catch (error) {
+      console.error("Error getting user by username:", error);
+      return undefined;
+    }
+  }
+
+  async createUser(user: InsertUser): Promise<User> {
+    try {
+      const [newUser] = await db.insert(users).values(user).returning();
+      return newUser;
+    } catch (error) {
+      console.error("Error creating user:", error);
+      throw error;
+    }
+  }
+
+  async updateUser(id: number, updates: Partial<InsertUser>): Promise<User | undefined> {
+    try {
+      const [updatedUser] = await db
+        .update(users)
+        .set(updates)
+        .where(eq(users.id, id))
+        .returning();
+      return updatedUser;
+    } catch (error) {
+      console.error("Error updating user:", error);
+      return undefined;
+    }
+  }
+
+  async updateStripeCustomerId(id: number, stripeCustomerId: string): Promise<User | undefined> {
+    try {
+      const [updatedUser] = await db
+        .update(users)
+        .set({ stripeCustomerId })
+        .where(eq(users.id, id))
+        .returning();
+      return updatedUser;
+    } catch (error) {
+      console.error("Error updating user stripe ID:", error);
+      return undefined;
+    }
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    try {
+      return await db.select().from(users);
+    } catch (error) {
+      console.error("Error getting all users:", error);
+      return [];
+    }
+  }
+
+  // Product methods
+  async getProduct(id: number): Promise<Product | undefined> {
+    try {
+      const [product] = await db.select().from(products).where(eq(products.id, id));
+      return product;
+    } catch (error) {
+      console.error("Error getting product:", error);
+      return undefined;
+    }
+  }
+
+  async getProductsByCategory(category: string): Promise<Product[]> {
+    try {
+      return await db.select().from(products).where(eq(products.category, category));
+    } catch (error) {
+      console.error("Error getting products by category:", error);
+      return [];
+    }
+  }
+
+  async getProductsBySeller(sellerId: number): Promise<Product[]> {
+    try {
+      return await db.select().from(products).where(eq(products.sellerId, sellerId));
+    } catch (error) {
+      console.error("Error getting products by seller:", error);
+      return [];
+    }
+  }
+
+  async searchProducts(query: string): Promise<Product[]> {
+    try {
+      return await db
+        .select()
+        .from(products)
+        .where(
+          or(
+            like(products.title, `%${query}%`),
+            like(products.description, `%${query}%`),
+            like(products.category, `%${query}%`)
+          )
+        );
+    } catch (error) {
+      console.error("Error searching products:", error);
+      return [];
+    }
+  }
+
+  async createProduct(product: InsertProduct): Promise<Product> {
+    try {
+      const [newProduct] = await db.insert(products).values(product).returning();
+      return newProduct;
+    } catch (error) {
+      console.error("Error creating product:", error);
+      throw error;
+    }
+  }
+
+  async updateProduct(id: number, updates: Partial<InsertProduct>): Promise<Product | undefined> {
+    try {
+      const [updatedProduct] = await db
+        .update(products)
+        .set(updates)
+        .where(eq(products.id, id))
+        .returning();
+      return updatedProduct;
+    } catch (error) {
+      console.error("Error updating product:", error);
+      return undefined;
+    }
+  }
+
+  async deleteProduct(id: number): Promise<boolean> {
+    try {
+      const result = await db.delete(products).where(eq(products.id, id));
+      return true;
+    } catch (error) {
+      console.error("Error deleting product:", error);
+      return false;
+    }
+  }
+
+  async getAllProducts(): Promise<Product[]> {
+    try {
+      return await db.select().from(products);
+    } catch (error) {
+      console.error("Error getting all products:", error);
+      return [];
+    }
+  }
+
+  // Order methods
+  async getOrder(id: number): Promise<Order | undefined> {
+    try {
+      const [order] = await db.select().from(orders).where(eq(orders.id, id));
+      return order;
+    } catch (error) {
+      console.error("Error getting order:", error);
+      return undefined;
+    }
+  }
+
+  async getOrdersByBuyer(buyerId: number): Promise<Order[]> {
+    try {
+      return await db.select().from(orders).where(eq(orders.buyerId, buyerId));
+    } catch (error) {
+      console.error("Error getting orders by buyer:", error);
+      return [];
+    }
+  }
+
+  async getOrdersForSellerProducts(sellerId: number): Promise<Order[]> {
+    try {
+      // Join orders, order items, and products to find orders containing products from this seller
+      const result = await db
+        .select({
+          order: orders,
+        })
+        .from(orders)
+        .innerJoin(orderItems, eq(orders.id, orderItems.orderId))
+        .innerJoin(products, eq(orderItems.productId, products.id))
+        .where(eq(products.sellerId, sellerId))
+        .groupBy(orders.id);
+
+      return result.map(r => r.order);
+    } catch (error) {
+      console.error("Error getting orders for seller products:", error);
+      return [];
+    }
+  }
+
+  async createOrder(orderData: InsertOrder, items: InsertOrderItem[]): Promise<Order> {
+    try {
+      // Create the order
+      const [order] = await db.insert(orders).values(orderData).returning();
+      
+      // Create the order items with the new order ID
+      for (const item of items) {
+        await db.insert(orderItems).values({
+          ...item,
+          orderId: order.id
+        });
+      }
+      
+      return order;
+    } catch (error) {
+      console.error("Error creating order:", error);
+      throw error;
+    }
+  }
+
+  async updateOrderStatus(id: number, status: string): Promise<Order | undefined> {
+    try {
+      const [updatedOrder] = await db
+        .update(orders)
+        .set({ orderStatus: status as any })
+        .where(eq(orders.id, id))
+        .returning();
+      return updatedOrder;
+    } catch (error) {
+      console.error("Error updating order status:", error);
+      return undefined;
+    }
+  }
+
+  async getAllOrders(): Promise<Order[]> {
+    try {
+      return await db.select().from(orders);
+    } catch (error) {
+      console.error("Error getting all orders:", error);
+      return [];
+    }
+  }
+
+  // Order Item methods
+  async getOrderItems(orderId: number): Promise<OrderItem[]> {
+    try {
+      return await db.select().from(orderItems).where(eq(orderItems.orderId, orderId));
+    } catch (error) {
+      console.error("Error getting order items:", error);
+      return [];
+    }
+  }
+
+  // Review methods
+  async getReviewsForProduct(productId: number): Promise<Review[]> {
+    try {
+      return await db.select().from(reviews).where(eq(reviews.productId, productId));
+    } catch (error) {
+      console.error("Error getting reviews for product:", error);
+      return [];
+    }
+  }
+
+  async createReview(review: InsertReview): Promise<Review> {
+    try {
+      const [newReview] = await db.insert(reviews).values(review).returning();
+      return newReview;
+    } catch (error) {
+      console.error("Error creating review:", error);
+      throw error;
+    }
+  }
+
+  // Message methods
+  async getMessagesBetweenUsers(user1Id: number, user2Id: number): Promise<Message[]> {
+    try {
+      return await db
+        .select()
+        .from(messages)
+        .where(
+          or(
+            and(
+              eq(messages.senderId, user1Id),
+              eq(messages.receiverId, user2Id)
+            ),
+            and(
+              eq(messages.senderId, user2Id),
+              eq(messages.receiverId, user1Id)
+            )
+          )
+        )
+        .orderBy(messages.createdAt);
+    } catch (error) {
+      console.error("Error getting messages between users:", error);
+      return [];
+    }
+  }
+
+  async createMessage(message: InsertMessage): Promise<Message> {
+    try {
+      const [newMessage] = await db.insert(messages).values(message).returning();
+      return newMessage;
+    } catch (error) {
+      console.error("Error creating message:", error);
+      throw error;
+    }
+  }
+
+  // Cart methods
+  async getCartItems(userId: number): Promise<CartItem[]> {
+    try {
+      return await db.select().from(cartItems).where(eq(cartItems.userId, userId));
+    } catch (error) {
+      console.error("Error getting cart items:", error);
+      return [];
+    }
+  }
+
+  async addCartItem(cartItem: InsertCartItem): Promise<CartItem> {
+    try {
+      const [newCartItem] = await db.insert(cartItems).values(cartItem).returning();
+      return newCartItem;
+    } catch (error) {
+      console.error("Error adding cart item:", error);
+      throw error;
+    }
+  }
+
+  async updateCartItemQuantity(id: number, quantity: number): Promise<CartItem | undefined> {
+    try {
+      const [updatedCartItem] = await db
+        .update(cartItems)
+        .set({ quantity })
+        .where(eq(cartItems.id, id))
+        .returning();
+      return updatedCartItem;
+    } catch (error) {
+      console.error("Error updating cart item quantity:", error);
+      return undefined;
+    }
+  }
+
+  async removeCartItem(id: number): Promise<boolean> {
+    try {
+      await db.delete(cartItems).where(eq(cartItems.id, id));
+      return true;
+    } catch (error) {
+      console.error("Error removing cart item:", error);
+      return false;
+    }
+  }
+
+  async clearCart(userId: number): Promise<boolean> {
+    try {
+      await db.delete(cartItems).where(eq(cartItems.userId, userId));
+      return true;
+    } catch (error) {
+      console.error("Error clearing cart:", error);
+      return false;
+    }
+  }
+}
+
+export const storage = new DatabaseStorage();
