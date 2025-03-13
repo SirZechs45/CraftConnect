@@ -212,11 +212,28 @@ export default function OrderConfirmation() {
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
   const [orderId, setOrderId] = useState<number | null>(null);
 
-  // Fetch order details if available
-  const { data: orderDetails, isLoading } = useQuery({
+  // Fetch order details from the order ID if available
+  const { data: orderDetailsByOrderId, isLoading: isLoadingOrderDetails } = useQuery({
     queryKey: [`/api/orders/${orderId}`],
-    enabled: !!orderId && isAuthenticated,
+    enabled: !!orderId && orderId > 0 && isAuthenticated,
   });
+
+  // Fetch order details using payment intent ID if order ID is not available
+  const { data: orderDetailsByPaymentIntent, isLoading: isLoadingPaymentIntent } = useQuery({
+    queryKey: [`/api/payment/${paymentIntentId}/order`],
+    enabled: !!paymentIntentId && !orderId && isAuthenticated,
+  });
+
+  // Combine the two possible sources of order details
+  const orderDetails = orderDetailsByOrderId || orderDetailsByPaymentIntent;
+  const isLoading = isLoadingOrderDetails || isLoadingPaymentIntent;
+
+  // Set the orderId if we find it from the payment intent query
+  useEffect(() => {
+    if (orderDetailsByPaymentIntent && !orderId) {
+      setOrderId(orderDetailsByPaymentIntent.id);
+    }
+  }, [orderDetailsByPaymentIntent, orderId]);
 
   useEffect(() => {
     // Check for payment intent status in URL
@@ -228,7 +245,7 @@ export default function OrderConfirmation() {
       setPaymentIntentId(paymentIntent);
     }
 
-    if (orderIdParam && orderIdParam !== "null") {
+    if (orderIdParam && orderIdParam !== "null" && orderIdParam !== "undefined") {
       setOrderId(Number(orderIdParam));
     }
 

@@ -113,7 +113,8 @@ export default function CheckoutForm() {
         description: "Your order has been successfully placed!",
       });
 
-      navigate(`/order-confirmation?order_id=${orderResponse.id}`); // Redirect with order ID
+      // Redirect with order ID, handling potential null/undefined
+      navigate(`/order-confirmation?payment_intent=${paymentIntent.id}&order_id=${orderResponse.id || ''}&redirect_status=succeeded`);
 
     } catch (error: any) {
       setErrorMessage(error.message || "An error occurred during checkout");

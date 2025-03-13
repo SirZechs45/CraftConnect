@@ -864,6 +864,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
+  
+  // Get order by payment intent ID
+  app.get('/api/payment/:paymentIntentId/order', isAuthenticated, async (req, res) => {
+    try {
+      const { paymentIntentId } = req.params;
+      
+      if (!paymentIntentId) {
+        return res.status(400).json({ message: 'Payment intent ID is required' });
+      }
+      
+      // Find order with this payment intent ID
+      const orders = await storage.getAllOrders();
+      const order = orders.find(o => o.paymentIntentId === paymentIntentId);
+      
+      if (!order) {
+        return res.status(404).json({ message: 'Order not found for this payment' });
+      }
+      
+      // Check permissions
+      const userId = req.session.userId;
+      if (order.buyerId !== userId) {
+        const user = await storage.getUser(userId);
+        if (user?.role !== 'admin') {
+          return res.status(403).json({ message: 'Not authorized to view this order' });
+        }
+      }
+      
+      // Get order items
+      const items = await storage.getOrderItems(order.id);
+      
+      // Get product details for each item
+      const itemsWithProducts = await Promise.all(items.map(async (item) => {
+        const product = await storage.getProduct(item.productId);
+        return {
+          ...item,
+          product
+        };
+      }));
+      
+      res.json({
+        ...order,
+        items: itemsWithProducts
+      });
+    } catch (error) {
+      console.error('Error retrieving order by payment intent:', error);
+      res.status(400).json({ message: error.message });
+    }
+  });
 
   const httpServer = createServer(app);
 
