@@ -1,5 +1,9 @@
-import { useState, useEffect } from 'react';
-import { useStripe, useElements, PaymentElement } from '@stripe/react-stripe-js';
+import { useState, useEffect } from "react";
+import {
+  useStripe,
+  useElements,
+  PaymentElement,
+} from "@stripe/react-stripe-js";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -19,7 +23,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { CardElement } from '@stripe/react-stripe-js';
+import { CardElement } from "@stripe/react-stripe-js";
 
 const checkoutFormSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -29,7 +33,9 @@ const checkoutFormSchema = z.object({
   state: z.string().min(2, "State must be at least 2 characters"),
   zipCode: z.string().min(5, "Zip code must be at least 5 characters"),
   country: z.string().min(2, "Country must be at least 2 characters"),
-  phoneNumber: z.string().min(10, "Phone number must be at least 10 characters"),
+  phoneNumber: z
+    .string()
+    .min(10, "Phone number must be at least 10 characters"),
 });
 
 type CheckoutFormValues = z.infer<typeof checkoutFormSchema>;
@@ -73,7 +79,7 @@ export default function CheckoutForm() {
           totalAmount: cartTotal.toString(), // Convert to string
           orderStatus: "pending",
         },
-        items: cartItems.map(item => ({
+        items: cartItems.map((item) => ({
           productId: item.product.id,
           quantity: item.quantity,
           unitPrice: Number(item.product.price),
@@ -87,8 +93,9 @@ export default function CheckoutForm() {
       const { error } = await stripe.confirmPayment({
         elements,
         confirmParams: {
-          return_url: window.location.origin + "/order-confirmation",
+          //return_url: window.location.origin + "/order-confirmation",
         },
+        redirect: "if_required",
       });
 
       if (error) {
@@ -141,7 +148,11 @@ export default function CheckoutForm() {
               <FormItem>
                 <FormLabel>Email</FormLabel>
                 <FormControl>
-                  <Input type="email" placeholder="you@example.com" {...field} />
+                  <Input
+                    type="email"
+                    placeholder="you@example.com"
+                    {...field}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -243,12 +254,14 @@ export default function CheckoutForm() {
           <PaymentElement />
         </div>
 
-        <Button 
-          type="submit" 
-          disabled={isLoading || !stripe || !elements} 
+        <Button
+          type="submit"
+          disabled={isLoading || !stripe || !elements}
           className="w-full"
         >
-          {isLoading ? "Processing..." : `Pay ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cartTotal)}`}
+          {isLoading
+            ? "Processing..."
+            : `Pay ${new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cartTotal)}`}
         </Button>
       </form>
     </Form>
