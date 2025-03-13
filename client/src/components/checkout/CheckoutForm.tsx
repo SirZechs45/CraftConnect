@@ -46,6 +46,7 @@ export default function CheckoutForm() {
   const { toast } = useToast();
   const [_, navigate] = useLocation();
   const { cartTotal, cartItems, clearCart } = useCart();
+  const [orderId, setOrderId] = useState<number | null>(null); // Added state for order ID
 
   const stripe = useStripe();
   const elements = useElements();
@@ -86,8 +87,9 @@ export default function CheckoutForm() {
         })),
       };
 
-      // Create order
-      await apiRequest("POST", "/api/orders", orderData);
+      // Create order and get order ID
+      const orderResponse = await apiRequest("POST", "/api/orders", orderData);
+      setOrderId(orderResponse.id); // Assuming the API returns an object with an 'id' property
 
       // Process payment with Stripe
       const { error } = await stripe.confirmPayment({
@@ -110,7 +112,7 @@ export default function CheckoutForm() {
         description: "Your order has been successfully placed!",
       });
 
-      navigate("/order-confirmation");
+      navigate(`/order-confirmation?order_id=${orderId}`); // Redirect with order ID
     } catch (error: any) {
       setErrorMessage(error.message || "An error occurred during checkout");
       toast({
@@ -265,5 +267,22 @@ export default function CheckoutForm() {
         </Button>
       </form>
     </Form>
+  );
+}
+
+//Order Confirmation Page
+import { useParams } from "react-router-dom";
+
+export function OrderConfirmationPage() {
+  const params = useParams<{ orderId: string }>();
+  const orderId = params.orderId;
+
+  return (
+    <div>
+      <h1>Order Confirmation</h1>
+      <p>Your order (ID: {orderId}) is being processed.</p>
+      {/* Add more details here as needed */}
+      <a href="/">Go back to home</a>
+    </div>
   );
 }

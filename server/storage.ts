@@ -36,6 +36,7 @@ export interface IStorage {
   getOrdersForSellerProducts(sellerId: number): Promise<Order[]>;
   createOrder(order: InsertOrder, items: InsertOrderItem[]): Promise<Order>;
   updateOrderStatus(id: number, status: string): Promise<Order | undefined>;
+  updateOrder(orderId: number, updates: Partial<Order>): Promise<Order | undefined>;
   getAllOrders(): Promise<Order[]>;
 
   // Order Item methods
@@ -294,6 +295,20 @@ export class MemStorage implements IStorage {
       ...order, 
       orderStatus: orderStatus as any, 
       updatedAt: new Date() 
+    };
+
+    this.orders.set(id, updatedOrder);
+    return updatedOrder;
+  }
+
+  async updateOrder(id: number, updates: Partial<Order>): Promise<Order | undefined> {
+    const order = this.orders.get(id);
+    if (!order) return undefined;
+
+    const updatedOrder: Order = {
+      ...order,
+      ...updates,
+      updatedAt: new Date()
     };
 
     this.orders.set(id, updatedOrder);
@@ -650,6 +665,20 @@ export class DatabaseStorage implements IStorage {
       return updatedOrder;
     } catch (error) {
       console.error("Error updating order status:", error);
+      return undefined;
+    }
+  }
+
+  async updateOrder(orderId: number, updates: Partial<Order>): Promise<Order | undefined> {
+    try {
+      const [updatedOrder] = await db
+        .update(orders)
+        .set({ ...updates, updatedAt: new Date() })
+        .where(eq(orders.id, orderId))
+        .returning();
+      return updatedOrder;
+    } catch (error) {
+      console.error('Error updating order:', error);
       return undefined;
     }
   }

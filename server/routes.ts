@@ -812,7 +812,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Payment Routes
   app.post('/api/create-payment-intent', isAuthenticated, async (req, res) => {
     try {
-      const { amount } = req.body;
+      const { amount, orderId } = req.body;
       
       if (!amount || typeof amount === 'undefined' || isNaN(parseFloat(String(amount)))) {
         return res.status(400).json({ message: 'Valid amount is required' });
@@ -832,6 +832,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Add metadata to help identify the payment
         metadata: {
           user_id: req.session.userId?.toString() || 'unknown',
+          order_id: orderId?.toString() || '',
           integration_type: 'marketplace',
           environment: process.env.NODE_ENV || 'development'
         },
@@ -843,8 +844,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`Payment intent created: ${paymentIntent.id}`);
       
+      // If we have an order ID, update the order with payment intent information
+      if (orderId) {
+        await storage.updateOrder(Number(orderId), {
+          paymentIntentId: paymentIntent.id,
+          paymentStatus: 'pending'
+        });
+      }
+      
       res.json({
-        clientSecret: paymentIntent.client_secret
+        clientSecret: paymentIntent.client_secret,
+        paymentIntentId: paymentIntent.id
       });
     } catch (error) {
       console.error('Error creating payment intent:', error);

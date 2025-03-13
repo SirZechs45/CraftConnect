@@ -39,6 +39,8 @@ export const orders = pgTable("orders", {
   buyerId: integer("buyer_id").references(() => users.id).notNull(),
   totalAmount: numeric("total_amount").notNull(),
   orderStatus: orderStatusEnum("order_status").default('pending').notNull(),
+  paymentStatus: text("payment_status").default('pending'),
+  paymentIntentId: text("payment_intent_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
