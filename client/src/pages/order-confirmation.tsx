@@ -191,3 +191,147 @@ export default function OrderConfirmation() {
     </div>
   );
 }
+import { useEffect, useState } from "react";
+import { useLocation, useSearchParams, Link } from "wouter";
+import Header from "@/components/layout/Header";
+import Footer from "@/components/layout/Footer";
+import { Button } from "@/components/ui/button";
+import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/lib/auth";
+import { CheckCircle, XCircle, Clock, ChevronLeft, ShoppingBag } from "lucide-react";
+
+export default function OrderConfirmation() {
+  const [searchParams] = useSearchParams();
+  const [, navigate] = useLocation();
+  const { user, isAuthenticated } = useAuth();
+  
+  const [paymentStatus, setPaymentStatus] = useState<
+    "success" | "processing" | "failed"
+  >("processing");
+  
+  const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
+  const [orderId, setOrderId] = useState<number | null>(null);
+
+  // Fetch order details if available
+  const { data: orderDetails, isLoading } = useQuery({
+    queryKey: [`/api/orders/${orderId}`],
+    enabled: !!orderId && isAuthenticated,
+  });
+
+  useEffect(() => {
+    // Check for payment intent status in URL
+    const paymentIntent = searchParams.get("payment_intent");
+    const redirectStatus = searchParams.get("redirect_status");
+    const orderIdParam = searchParams.get("order_id");
+
+    if (paymentIntent) {
+      setPaymentIntentId(paymentIntent);
+    }
+
+    if (orderIdParam && orderIdParam !== "null") {
+      setOrderId(Number(orderIdParam));
+    }
+
+    if (redirectStatus === "succeeded") {
+      setPaymentStatus("success");
+    } else if (redirectStatus === "failed") {
+      setPaymentStatus("failed");
+    }
+  }, [searchParams]);
+
+  return (
+    <div className="min-h-screen flex flex-col">
+      <Header />
+      <main className="flex-grow container max-w-5xl mx-auto px-4 py-10">
+        <div className="bg-white rounded-lg shadow-sm p-8 text-center">
+          {paymentStatus === "success" && (
+            <>
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <CheckCircle className="w-8 h-8 text-green-600" />
+              </div>
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                Order Successful!
+              </h1>
+              <p className="text-gray-600 mb-6">
+                Thank you for your purchase. Your order has been placed successfully.
+                {paymentIntentId && (
+                  <span className="block mt-2 text-sm">
+                    Payment ID: {paymentIntentId}
+                  </span>
+                )}
+              </p>
+              
+              {orderDetails ? (
+                <div className="mb-6">
+                  <p className="font-medium text-gray-900">
+                    Order number: #{orderDetails.id}
+                  </p>
+                  <p className="text-gray-600">
+                    We've sent a confirmation to your email.
+                  </p>
+                </div>
+              ) : (
+                <p className="text-gray-600 mb-6">
+                  Your order has been processed. You can view your orders in your profile.
+                </p>
+              )}
+            </>
+          )}
+
+          {paymentStatus === "processing" && (
+            <>
+              <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Clock className="w-8 h-8 text-yellow-600" />
+              </div>
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                Processing Your Order
+              </h1>
+              <p className="text-gray-600 mb-6">
+                Your payment is being processed. Please wait a moment.
+              </p>
+            </>
+          )}
+
+          {paymentStatus === "failed" && (
+            <>
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <XCircle className="w-8 h-8 text-red-600" />
+              </div>
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                Payment Failed
+              </h1>
+              <p className="text-gray-600 mb-6">
+                There was an issue processing your payment. Please try again.
+              </p>
+              <Button variant="outline" asChild className="mr-4">
+                <Link href="/cart">
+                  <ChevronLeft className="mr-2 h-4 w-4" />
+                  Return to Cart
+                </Link>
+              </Button>
+            </>
+          )}
+
+          <div className="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4">
+            <Button variant="outline" asChild>
+              <Link href="/">
+                <ChevronLeft className="mr-2 h-4 w-4" />
+                Continue Shopping
+              </Link>
+            </Button>
+            
+            {paymentStatus === "success" && (
+              <Button asChild>
+                <Link href="/profile">
+                  <ShoppingBag className="mr-2 h-4 w-4" />
+                  View My Orders
+                </Link>
+              </Button>
+            )}
+          </div>
+        </div>
+      </main>
+      <Footer />
+    </div>
+  );
+}

@@ -854,7 +854,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json({
         clientSecret: paymentIntent.client_secret,
-        paymentIntentId: paymentIntent.id
+        paymentIntentId: paymentIntent.id,
+        orderId: orderId // Return the orderId for use in the redirect URL
       });
     } catch (error) {
       console.error('Error creating payment intent:', error);

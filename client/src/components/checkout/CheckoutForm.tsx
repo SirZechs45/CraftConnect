@@ -92,13 +92,14 @@ export default function CheckoutForm() {
       setOrderId(orderResponse.id); // Assuming the API returns an object with an 'id' property
 
       // Process payment with Stripe
-      const { error } = await stripe.confirmPayment({
+      const {error, paymentIntent} = await stripe.confirmPayment({
         elements,
         confirmParams: {
           //return_url: window.location.origin + "/order-confirmation",
         },
         redirect: "if_required",
       });
+
 
       if (error) {
         throw new Error(error.message || "Payment failed");
@@ -112,7 +113,8 @@ export default function CheckoutForm() {
         description: "Your order has been successfully placed!",
       });
 
-      navigate(`/order-confirmation?order_id=${orderId}`); // Redirect with order ID
+      navigate(`/order-confirmation?order_id=${orderResponse.id}`); // Redirect with order ID
+
     } catch (error: any) {
       setErrorMessage(error.message || "An error occurred during checkout");
       toast({
