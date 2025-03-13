@@ -271,18 +271,5 @@ export default function CheckoutForm() {
 }
 
 //Order Confirmation Page
-import { useParams } from "react-router-dom";
-
-export function OrderConfirmationPage() {
-  const params = useParams<{ orderId: string }>();
-  const orderId = params.orderId;
-
-  return (
-    <div>
-      <h1>Order Confirmation</h1>
-      <p>Your order (ID: {orderId}) is being processed.</p>
-      {/* Add more details here as needed */}
-      <a href="/">Go back to home</a>
-    </div>
-  );
-}
+// Remove the duplicate OrderConfirmationPage component from CheckoutForm.tsx
+// since it's already defined in client/src/pages/order-confirmation.tsx
