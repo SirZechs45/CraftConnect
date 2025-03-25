@@ -23,10 +23,8 @@ if (!process.env.STRIPE_SECRET_KEY) {
   console.error('Missing STRIPE_SECRET_KEY environment variable');
 }
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || '';
-// Initialize Stripe with proper configuration for version 17
 const stripe = new Stripe(STRIPE_SECRET_KEY, {
-  apiVersion: '2023-10-16',  // Compatible with Stripe.js v6
-  typescript: true,
+  apiVersion: '2023-10-16',  // This should be updated if required
 });
 
 // Session setup with PostgreSQL store for persistence
@@ -547,10 +545,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Order must include items' });
       }
       
-      console.log('Received order data:', JSON.stringify(order));
-      
-      try {
-        const orderData = insertOrderSchema.parse(order);
+      const orderData = insertOrderSchema.parse(order);
       
       // Ensure the buyer is the logged in user
       if (orderData.buyerId !== req.session.userId) {
@@ -559,38 +554,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Validate all items
       for (const item of items) {
-        try {
-          // Ensure unitPrice is handled as a string for Zod validation
-          const itemToValidate = {
-            ...item,
-            unitPrice: item.unitPrice ? String(item.unitPrice) : item.unitPrice
-          };
-          
-          // Create a new schema without orderId for validation
-          const orderItemWithoutOrderIdSchema = z.object({
-            productId: z.number(),
-            quantity: z.number().min(1),
-            unitPrice: z.string(),
-          });
-          
-          const validatedItem = orderItemWithoutOrderIdSchema.parse(itemToValidate);
-          
-          // Check if product exists and has enough quantity
-          const product = await storage.getProduct(validatedItem.productId);
-          if (!product) {
-            return res.status(404).json({ message: `Product with ID ${validatedItem.productId} not found` });
-          }
-          
-          if (+product.quantityAvailable < +validatedItem.quantity) {
-            return res.status(400).json({ 
-              message: `Not enough quantity for product ${product.title}. Available: ${product.quantityAvailable}` 
-            });
-          }
-        } catch (validationError) {
-          console.error('Item validation error:', validationError);
+        const validatedItem = insertOrderItemSchema.omit({ orderId: true }).parse(item);
+        
+        // Check if product exists and has enough quantity
+        const product = await storage.getProduct(validatedItem.productId);
+        if (!product) {
+          return res.status(404).json({ message: `Product with ID ${validatedItem.productId} not found` });
+        }
+        
+        if (+product.quantityAvailable < +validatedItem.quantity) {
           return res.status(400).json({ 
-            message: validationError.message || 'Item validation error',
-            details: validationError.errors || validationError
+            message: `Not enough quantity for product ${product.title}. Available: ${product.quantityAvailable}` 
           });
         }
       }
@@ -602,19 +576,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.clearCart(req.session.userId);
       
       res.status(201).json(newOrder);
-      } catch (validationError) {
-        console.error('Order validation error:', validationError);
-        return res.status(400).json({ 
-          message: validationError.message || 'Validation error',
-          details: validationError.errors || validationError
-        });
-      }
     } catch (error) {
-      console.error('Order creation error:', error);
-      res.status(400).json({ 
-        message: error.message || 'Error creating order',
-        details: error.errors || error
-      });
+      res.status(400).json({ message: error.message });
     }
   });
 
@@ -812,103 +775,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Payment Routes
   app.post('/api/create-payment-intent', isAuthenticated, async (req, res) => {
     try {
-      const { amount, orderId } = req.body;
+      const { amount } = req.body;
       
-      if (!amount || typeof amount === 'undefined' || isNaN(parseFloat(String(amount)))) {
+      if (!amount || isNaN(Number(amount))) {
         return res.status(400).json({ message: 'Valid amount is required' });
       }
       
-      // Check if Stripe API key is available
-      if (!process.env.STRIPE_SECRET_KEY) {
-        return res.status(500).json({ message: 'Stripe payment service is not configured' });
-      }
-      
-      console.log('Creating payment intent with amount:', amount, 'Type:', typeof amount);
-      
-      // Create a payment intent with improved options for test mode
       const paymentIntent = await stripe.paymentIntents.create({
-        amount: Math.round(parseFloat(String(amount)) * 100), // Convert to cents and ensure integer
+        amount: Math.round(Number(amount) * 100), // Convert to cents
         currency: 'usd',
-        // Add metadata to help identify the payment
-        metadata: {
-          user_id: req.session.userId?.toString() || 'unknown',
-          order_id: orderId?.toString() || '',
-          integration_type: 'marketplace',
-          environment: process.env.NODE_ENV || 'development'
-        },
-        // Use automatic payment methods
-        automatic_payment_methods: {
-          enabled: true
-        }
       });
-      
-      console.log(`Payment intent created: ${paymentIntent.id}`);
-      
-      // If we have an order ID, update the order with payment intent information
-      if (orderId) {
-        await storage.updateOrder(Number(orderId), {
-          paymentIntentId: paymentIntent.id,
-          paymentStatus: 'pending'
-        });
-      }
       
       res.json({
-        clientSecret: paymentIntent.client_secret,
-        paymentIntentId: paymentIntent.id,
-        orderId: orderId // Return the orderId for use in the redirect URL
+        clientSecret: paymentIntent.client_secret
       });
     } catch (error) {
-      console.error('Error creating payment intent:', error);
-      res.status(400).json({ 
-        message: error instanceof Error ? error.message : 'Unknown payment processing error' 
-      });
-    }
-  });
-  
-  // Get order by payment intent ID
-  app.get('/api/payment/:paymentIntentId/order', isAuthenticated, async (req, res) => {
-    try {
-      const { paymentIntentId } = req.params;
-      
-      if (!paymentIntentId) {
-        return res.status(400).json({ message: 'Payment intent ID is required' });
-      }
-      
-      // Find order with this payment intent ID
-      const orders = await storage.getAllOrders();
-      const order = orders.find(o => o.paymentIntentId === paymentIntentId);
-      
-      if (!order) {
-        return res.status(404).json({ message: 'Order not found for this payment' });
-      }
-      
-      // Check permissions
-      const userId = req.session.userId;
-      if (order.buyerId !== userId) {
-        const user = await storage.getUser(userId);
-        if (user?.role !== 'admin') {
-          return res.status(403).json({ message: 'Not authorized to view this order' });
-        }
-      }
-      
-      // Get order items
-      const items = await storage.getOrderItems(order.id);
-      
-      // Get product details for each item
-      const itemsWithProducts = await Promise.all(items.map(async (item) => {
-        const product = await storage.getProduct(item.productId);
-        return {
-          ...item,
-          product
-        };
-      }));
-      
-      res.json({
-        ...order,
-        items: itemsWithProducts
-      });
-    } catch (error) {
-      console.error('Error retrieving order by payment intent:', error);
       res.status(400).json({ message: error.message });
     }
   });

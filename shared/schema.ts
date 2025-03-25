@@ -39,8 +39,6 @@ export const orders = pgTable("orders", {
   buyerId: integer("buyer_id").references(() => users.id).notNull(),
   totalAmount: numeric("total_amount").notNull(),
   orderStatus: orderStatusEnum("order_status").default('pending').notNull(),
-  paymentStatus: text("payment_status").default('pending'),
-  paymentIntentId: text("payment_intent_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -85,12 +83,7 @@ export const cartItems = pgTable("cart_items", {
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true, updatedAt: true, stripeCustomerId: true });
 export const insertProductSchema = createInsertSchema(products).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertOrderSchema = createInsertSchema(orders).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertOrderItemSchema = createInsertSchema(orderItems)
-  .omit({ id: true })
-  .transform((data) => ({
-    ...data,
-    unitPrice: String(data.unitPrice) // Ensure unitPrice is always a string
-  }));
+export const insertOrderItemSchema = createInsertSchema(orderItems).omit({ id: true });
 export const insertReviewSchema = createInsertSchema(reviews).omit({ id: true, createdAt: true });
 export const insertMessageSchema = createInsertSchema(messages).omit({ id: true, createdAt: true });
 export const insertCartItemSchema = createInsertSchema(cartItems).omit({ id: true });
