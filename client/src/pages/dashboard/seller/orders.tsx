@@ -113,7 +113,7 @@ export default function SellerOrders() {
   const { toast } = useToast();
   
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isOrderDetailOpen, setIsOrderDetailOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
@@ -169,9 +169,9 @@ export default function SellerOrders() {
       : true;
     
     // Status filter from dropdown
-    const statusMatch = statusFilter 
-      ? order.orderStatus === statusFilter
-      : true;
+    const statusMatch = statusFilter === "all"
+      ? true
+      : order.orderStatus === statusFilter;
     
     // Tab filter
     const tabMatch = activeTab === "all" 
@@ -247,14 +247,14 @@ export default function SellerOrders() {
                 </div>
                 
                 <Select 
-                  value={statusFilter || ""} 
-                  onValueChange={(value) => setStatusFilter(value || null)}
+                  value={statusFilter} 
+                  onValueChange={(value) => setStatusFilter(value)}
                 >
                   <SelectTrigger className="w-[180px]">
                     <SelectValue placeholder="Filter by status" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Statuses</SelectItem>
+                    <SelectItem value="all">All Statuses</SelectItem>
                     <SelectItem value="pending">Pending</SelectItem>
                     <SelectItem value="processing">Processing</SelectItem>
                     <SelectItem value="shipped">Shipped</SelectItem>
@@ -267,10 +267,10 @@ export default function SellerOrders() {
                   variant="outline"
                   onClick={() => {
                     setSearchQuery("");
-                    setStatusFilter(null);
+                    setStatusFilter("all");
                     setActiveTab("all");
                   }}
-                  disabled={!searchQuery && !statusFilter && activeTab === "all"}
+                  disabled={!searchQuery && statusFilter === "all" && activeTab === "all"}
                 >
                   Clear Filters
                 </Button>
@@ -390,16 +390,16 @@ export default function SellerOrders() {
                   <AlertTriangle className="mx-auto h-12 w-12 text-gray-400" />
                   <h3 className="mt-4 text-lg font-medium text-gray-900">No orders found</h3>
                   <p className="mt-2 text-gray-500">
-                    {searchQuery || statusFilter || activeTab !== "all"
+                    {searchQuery || statusFilter !== "all" || activeTab !== "all"
                       ? "No orders match your search criteria. Try adjusting your filters."
                       : "You don't have any orders yet."}
                   </p>
-                  {(searchQuery || statusFilter || activeTab !== "all") && (
+                  {(searchQuery || statusFilter !== "all" || activeTab !== "all") && (
                     <Button 
                       className="mt-6"
                       onClick={() => {
                         setSearchQuery("");
-                        setStatusFilter(null);
+                        setStatusFilter("all");
                         setActiveTab("all");
                       }}
                     >
