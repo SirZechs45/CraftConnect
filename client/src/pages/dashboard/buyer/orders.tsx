@@ -4,7 +4,12 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { formatPrice } from "@/lib/utils";
-import { Order } from "@shared/schema";
+import { Order, OrderItem } from "@shared/schema";
+
+// Extended Order interface with items property for displaying order details
+interface OrderWithItems extends Order {
+  items?: OrderItem[];
+}
 import { apiRequest } from "@/lib/queryClient";
 
 import Header from "@/components/layout/Header";
@@ -133,7 +138,7 @@ export default function BuyerOrders() {
   
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("all");
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<OrderWithItems | null>(null);
   const [isOrderDetailOpen, setIsOrderDetailOpen] = useState(false);
 
   // Redirect if not authenticated or not a buyer
@@ -173,9 +178,30 @@ export default function BuyerOrders() {
   }, {} as Record<string, number>);
 
   // View order details
-  const handleViewOrder = (order: Order) => {
-    setSelectedOrder(order);
-    setIsOrderDetailOpen(true);
+  const handleViewOrder = async (order: Order) => {
+    try {
+      // Fetch order details with items
+      const response = await fetch(`/api/orders/${order.id}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to load order details');
+      }
+      
+      const orderWithItems: OrderWithItems = await response.json();
+      setSelectedOrder(orderWithItems);
+      setIsOrderDetailOpen(true);
+    } catch (err) {
+      console.error('Error fetching order details:', err);
+      toast({
+        title: "Error",
+        description: "Could not load order details. Please try again.",
+        variant: "destructive"
+      });
+      
+      // Fallback to basic order info without items
+      setSelectedOrder(order);
+      setIsOrderDetailOpen(true);
+    }
   };
 
   if (loading || isLoading) {
@@ -374,10 +400,42 @@ export default function BuyerOrders() {
                     </div>
                   </div>
                   
-                  {/* This would ideally show actual order items */}
-                  <div className="px-4 py-3 text-center text-gray-500">
-                    Order items will appear here
-                  </div>
+                  {selectedOrder.items && selectedOrder.items.length > 0 ? (
+                    selectedOrder.items.map((item) => (
+                      <div key={item.id} className="p-4 border-b last:border-b-0">
+                        <div className="grid grid-cols-12 gap-2">
+                          <div className="col-span-6 flex items-center">
+                            <div className="text-sm">
+                              <p className="font-medium">Product ID: {item.productId}</p>
+                              {item.selectedColor && (
+                                <p className="text-gray-600 text-xs mt-1">
+                                  Color: {item.selectedColor}
+                                </p>
+                              )}
+                              {item.selectedVariant && (
+                                <p className="text-gray-600 text-xs mt-1">
+                                  Variant: {item.selectedVariant}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="col-span-2 flex items-center">
+                            <p>{formatPrice(Number(item.unitPrice))}</p>
+                          </div>
+                          <div className="col-span-2 flex items-center">
+                            <p>{item.quantity}</p>
+                          </div>
+                          <div className="col-span-2 flex items-center justify-end">
+                            <p className="font-medium">{formatPrice(Number(item.unitPrice) * item.quantity)}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="px-4 py-3 text-center text-gray-500">
+                      No items found for this order
+                    </div>
+                  )}
                 </div>
               </div>
               

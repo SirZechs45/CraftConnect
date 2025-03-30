@@ -486,13 +486,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(ordersWithItems);
     } catch (error) {
-      res.status(400).json({ message: error.message });
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Unknown error' });
+    }
+  });
+  
+  // Specific route for buyer orders
+  app.get('/api/orders/buyer', isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.session.userId;
+      const user = await storage.getUser(userId);
+      
+      if (!user || (user.role !== 'buyer' && user.role !== 'admin')) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+      
+      const orders = await storage.getOrdersByBuyer(userId);
+      
+      if (!orders || orders.length === 0) {
+        return res.status(404).json({ message: 'Order not found' });
+      }
+      
+      // Get order items for each order
+      const ordersWithItems = await Promise.all(orders.map(async (order) => {
+        const items = await storage.getOrderItems(order.id);
+        return {
+          ...order,
+          items
+        };
+      }));
+      
+      res.json(ordersWithItems);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
   app.get('/api/orders/:id', isAuthenticated, async (req, res) => {
     try {
+      // Check if id is a valid number
+      if (isNaN(Number(req.params.id))) {
+        return res.status(400).json({ message: 'Invalid order ID' });
+      }
+      
       const orderId = Number(req.params.id);
+      console.log(`Getting order with ID: ${orderId}`);
+      
       const order = await storage.getOrder(orderId);
       
       if (!order) {
@@ -533,7 +571,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         items: itemsWithProducts
       });
     } catch (error) {
-      res.status(400).json({ message: error.message });
+      console.error("Error getting order:", error);
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
