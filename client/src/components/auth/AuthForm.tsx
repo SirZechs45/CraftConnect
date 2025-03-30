@@ -48,6 +48,7 @@ const registerSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address" }),
   password: z.string().min(6, { message: "Password must be at least 6 characters" }),
   confirmPassword: z.string(),
+  birthday: z.string().optional(),
   role: z.enum(["buyer", "seller"]),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
@@ -87,6 +88,7 @@ export default function AuthForm({ defaultTab = "login", defaultRole = "buyer" }
       email: "",
       password: "",
       confirmPassword: "",
+      birthday: "",
       role: defaultRole as "buyer" | "seller",
     },
   });
@@ -275,6 +277,20 @@ export default function AuthForm({ defaultTab = "login", defaultRole = "buyer" }
                       <FormLabel>Confirm Password</FormLabel>
                       <FormControl>
                         <Input type="password" placeholder="••••••••" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={registerForm.control}
+                  name="birthday"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Birthday (for special offers)</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

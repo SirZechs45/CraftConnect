@@ -14,6 +14,7 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   role: userRoleEnum("role").default('buyer').notNull(),
   name: text("name").notNull(),
+  birthday: timestamp("birthday"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   stripeCustomerId: text("stripe_customer_id"),
@@ -29,6 +30,8 @@ export const products = pgTable("products", {
   quantityAvailable: integer("quantity_available").notNull(),
   images: text("images").array().notNull(),
   category: text("category").notNull(),
+  colorOptions: text("color_options").array(),
+  variants: text("variants").array(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -50,6 +53,8 @@ export const orderItems = pgTable("order_items", {
   productId: integer("product_id").references(() => products.id).notNull(),
   quantity: integer("quantity").notNull(),
   unitPrice: numeric("unit_price").notNull(),
+  selectedColor: text("selected_color"),
+  selectedVariant: text("selected_variant"),
 });
 
 // Reviews Table
@@ -77,6 +82,8 @@ export const cartItems = pgTable("cart_items", {
   userId: integer("user_id").references(() => users.id).notNull(),
   productId: integer("product_id").references(() => products.id).notNull(),
   quantity: integer("quantity").notNull(),
+  selectedColor: text("selected_color"),
+  selectedVariant: text("selected_variant"),
 });
 
 // Zod Schemas
