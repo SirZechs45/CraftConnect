@@ -3,6 +3,7 @@ import { Link, useLocation } from "wouter";
 import { useAuth } from "@/lib/auth";
 import { useCart } from "@/hooks/useCart";
 import CartDrawer from "@/components/cart/CartDrawer";
+import { NotificationsPopover } from "@/components/notifications/NotificationsPopover";
 
 import {
   DropdownMenu,
@@ -117,17 +118,8 @@ export default function Header() {
               )}
             </Button>
 
-            {/* Messages Button */}
-            <Button variant="ghost" size="icon" className="text-gray-600 hover:text-primary relative">
-              <MessageSquare size={20} />
-              {/* Example notification badge */}
-              <Badge 
-                variant="secondary" 
-                className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0"
-              >
-                2
-              </Badge>
-            </Button>
+            {/* Notifications Button */}
+            {user && <NotificationsPopover />}
 
             {/* User Menu */}
             {user ? (

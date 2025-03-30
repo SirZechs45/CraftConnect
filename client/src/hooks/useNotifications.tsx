@@ -44,7 +44,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<Error | null>(null);
   
   // Fetch notifications
-  const { data: notifications = [], isLoading } = useQuery({
+  const { data: notifications = [], isLoading } = useQuery<Notification[]>({
     queryKey: ['/api/notifications'],
     enabled: !!user,
     staleTime: 30000, // 30 seconds
@@ -52,14 +52,12 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   });
   
   // Calculate unread count
-  const unreadCount = notifications.filter(n => !n.isRead).length;
+  const unreadCount = notifications.filter((n: Notification) => !n.isRead).length;
   
   // Mark as read mutation
   const markAsReadMutation = useMutation({
     mutationFn: async (id: number) => {
-      return apiRequest(`/api/notifications/${id}/read`, {
-        method: 'PUT',
-      });
+      return apiRequest("PUT", `/api/notifications/${id}/read`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
@@ -72,9 +70,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   // Mark all as read mutation
   const markAllAsReadMutation = useMutation({
     mutationFn: async () => {
-      return apiRequest('/api/notifications/read-all', {
-        method: 'PUT',
-      });
+      return apiRequest("PUT", '/api/notifications/read-all');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
