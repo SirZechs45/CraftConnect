@@ -210,6 +210,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(400).json({ message: error.message });
     }
   });
+  
+  // User profile update route
+  app.patch('/api/users/profile', isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.session.userId;
+      const updates = req.body;
+      
+      // Check for fields that should not be updated directly
+      const restrictedFields = ['id', 'password', 'role', 'stripeCustomerId', 'createdAt', 'updatedAt'];
+      restrictedFields.forEach(field => {
+        if (updates[field] !== undefined) {
+          delete updates[field];
+        }
+      });
+      
+      // Update user profile
+      const updatedUser = await storage.updateUser(userId, updates);
+      
+      if (!updatedUser) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+      
+      // Remove sensitive information
+      const { password, ...userWithoutPassword } = updatedUser;
+      
+      res.json(userWithoutPassword);
+    } catch (error) {
+      console.error("Error updating user profile:", error);
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Unknown error' });
+    }
+  });
 
   app.post('/api/auth/logout', (req, res) => {
     req.session.destroy((err) => {

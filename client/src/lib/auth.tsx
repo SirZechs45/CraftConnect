@@ -8,6 +8,26 @@ export interface User {
   username: string;
   role: "buyer" | "seller" | "admin";
   profileImage?: string;
+  birthday?: string;
+  mobileNumber?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  receivePromotions?: boolean;
+  // Seller specific fields
+  businessName?: string;
+  businessDescription?: string;
+  gstin?: string;
+  panNumber?: string;
+  bankAccountName?: string;
+  bankAccountNumber?: string;
+  bankIfscCode?: string;
+  bankName?: string;
+  upiId?: string;
+  // System fields
+  created_at: string;
+  updated_at: string;
 }
 
 export interface AuthContextType {
@@ -15,6 +35,7 @@ export interface AuthContextType {
   loading: boolean;
   login: (userData: User) => void;
   logout: () => Promise<void>;
+  updateUserProfile: (updatedData: Partial<User>) => Promise<User | null>;
   isAuthenticated: boolean;
 }
 
@@ -23,6 +44,7 @@ const defaultContext: AuthContextType = {
   loading: true,
   login: () => {},
   logout: async () => {},
+  updateUserProfile: async () => null,
   isAuthenticated: false,
 };
 
@@ -61,6 +83,23 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
       console.error("Logout failed:", error);
     }
   };
+  
+  const updateUserProfile = async (updatedData: Partial<User>): Promise<User | null> => {
+    try {
+      const response = await apiRequest("PATCH", "/api/users/profile", updatedData);
+      
+      if (!response.ok) {
+        throw new Error('Failed to update profile');
+      }
+      
+      const updatedUser = await response.json();
+      setUser(updatedUser);
+      return updatedUser;
+    } catch (error) {
+      console.error("Profile update failed:", error);
+      return null;
+    }
+  };
 
   return (
     <AuthContext.Provider 
@@ -69,6 +108,7 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
         loading,
         login,
         logout,
+        updateUserProfile,
         isAuthenticated: !!user,
       }}
     >
