@@ -30,6 +30,7 @@ const registerSchema = z.object({
   password: z.string().min(6, { message: "Password must be at least 6 characters" }),
   confirmPassword: z.string(),
   role: z.enum(["buyer", "seller"]),
+  birthday: z.date({ message: "Please enter a valid date" }), // Added birthday field validation
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
@@ -42,7 +43,7 @@ const RegisterPage = () => {
   const { toast } = useToast();
   const [_, setLocation] = useLocation();
   const search = useSearch();
-  
+
   const preselectedRole = new URLSearchParams(search).get("role") === "seller" ? "seller" : "buyer";
 
   const form = useForm<RegisterFormValues>({
@@ -53,6 +54,7 @@ const RegisterPage = () => {
       password: "",
       confirmPassword: "",
       role: preselectedRole,
+      birthday: "", // Added birthday field to default values
     },
   });
 
@@ -66,12 +68,12 @@ const RegisterPage = () => {
     try {
       const { confirmPassword, ...registerData } = data;
       await apiRequest("POST", "/api/auth/register", registerData);
-      
+
       toast({
         title: "Registration successful",
         description: "Your account has been created. Please log in.",
       });
-      
+
       setLocation("/login");
     } catch (error: any) {
       toast({
@@ -119,7 +121,7 @@ const RegisterPage = () => {
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="email"
@@ -138,7 +140,7 @@ const RegisterPage = () => {
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="password"
@@ -157,7 +159,7 @@ const RegisterPage = () => {
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="confirmPassword"
@@ -176,7 +178,7 @@ const RegisterPage = () => {
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="role"
@@ -202,7 +204,20 @@ const RegisterPage = () => {
                   </FormItem>
                 )}
               />
-              
+              <FormField
+                control={form.control}
+                name="birthday"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Birthday</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} disabled={isLoading} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               <Button
                 type="submit"
                 className="w-full"

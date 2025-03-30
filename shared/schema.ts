@@ -87,7 +87,12 @@ export const cartItems = pgTable("cart_items", {
 });
 
 // Zod Schemas
-export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true, updatedAt: true, stripeCustomerId: true });
+export const insertUserSchema = createInsertSchema(users)
+  .omit({ id: true, createdAt: true, updatedAt: true, stripeCustomerId: true })
+  .transform((data) => ({
+    ...data,
+    birthday: data.birthday ? new Date(data.birthday) : null
+  }));
 export const insertProductSchema = createInsertSchema(products).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertOrderSchema = createInsertSchema(orders).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertOrderItemSchema = createInsertSchema(orderItems).omit({ id: true });
