@@ -141,7 +141,7 @@ export default function Header() {
                   
                   {/* Profile option */}
                   <DropdownMenuItem asChild>
-                    <Link href="/profile">Profile</Link>
+                    <Link href={user.role === "seller" ? "/dashboard/seller/profile" : "/dashboard/buyer/profile"}>Profile</Link>
                   </DropdownMenuItem>
                   
                   {/* Seller dashboard */}
@@ -216,6 +216,16 @@ export default function Header() {
                         {link.label}
                       </Link>
                     ))}
+                    
+                    {user && (
+                      <Link 
+                        href={user.role === "seller" ? "/dashboard/seller/profile" : "/dashboard/buyer/profile"}
+                        className="px-3 py-2.5 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        Profile
+                      </Link>
+                    )}
                     
                     {!user && (
                       <Button asChild className="mt-4">
