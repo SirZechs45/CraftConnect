@@ -87,12 +87,34 @@ export const cartItems = pgTable("cart_items", {
 });
 
 // Zod Schemas
-export const insertUserSchema = createInsertSchema(users)
-  .omit({ id: true, createdAt: true, updatedAt: true, stripeCustomerId: true })
-  .transform((data) => ({
-    ...data,
-    birthday: data.birthday ? new Date(data.birthday) : null
-  }));
+export const insertUserSchema = z.object({
+  email: z.string().email(),
+  username: z.string().min(3),
+  password: z.string().min(8),
+  role: z.enum(['buyer', 'seller', 'admin']).default('buyer'),
+  name: z.string().min(2),
+  birthday: z.string().transform((date) => {
+    const birthDate = new Date(date);
+    const minAge = 13;
+    const maxAge = 120;
+    const today = new Date();
+    const age = today.getFullYear() - birthDate.getFullYear();
+    
+    if (isNaN(birthDate.getTime())) {
+      throw new Error('Invalid date format');
+    }
+    
+    if (age < minAge || age > maxAge) {
+      throw new Error(`Age must be between ${minAge} and ${maxAge} years`);
+    }
+    
+    return birthDate;
+  }),
+  confirmPassword: z.string()
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
 export const insertProductSchema = createInsertSchema(products).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertOrderSchema = createInsertSchema(orders).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertOrderItemSchema = createInsertSchema(orderItems).omit({ id: true });
