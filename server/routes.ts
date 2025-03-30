@@ -127,14 +127,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth Routes
   app.post('/api/auth/register', async (req, res) => {
     try {
-      const schema = insertUserSchema.extend({
-        confirmPassword: z.string()
-      }).refine((data) => data.password === data.confirmPassword, {
-        message: "Passwords don't match",
-        path: ["confirmPassword"],
-      });
-      
-      const validatedData = schema.parse(req.body);
+      // Use the schema directly as it already includes confirmPassword and validation
+      const validatedData = insertUserSchema.parse(req.body);
       const { confirmPassword, ...userData } = validatedData;
       
       // Check if user already exists
