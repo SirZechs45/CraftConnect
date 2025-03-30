@@ -645,6 +645,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Clear the cart
       await storage.clearCart(req.session.userId);
       
+      // Create notification for the buyer about new order
+      try {
+        await storage.createNotification({
+          userId: newOrder.buyerId,
+          type: 'order_update',
+          title: `New Order #${newOrder.id} Created`,
+          message: `Your order #${newOrder.id} has been placed successfully. You will be notified when there are updates.`,
+          data: { orderId: newOrder.id, status: 'pending' },
+          isRead: false
+        });
+        
+        console.log(`Created notification for new order #${newOrder.id}`);
+      } catch (notificationError) {
+        console.error('Failed to create notification:', notificationError);
+        // Don't fail the request if notification creation fails
+      }
+      
       res.status(201).json(newOrder);
     } catch (error) {
       res.status(400).json({ message: error.message });
@@ -684,9 +701,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const updatedOrder = await storage.updateOrderStatus(orderId, status);
+      
+      // Create notification for the buyer about order status change
+      try {
+        // Generate appropriate message based on status
+        let title = `Order #${orderId} Status Update`;
+        let message = "";
+        
+        switch(status) {
+          case 'processing':
+            message = `Your order #${orderId} is now being processed.`;
+            break;
+          case 'shipped':
+            message = `Great news! Your order #${orderId} has been shipped.`;
+            break;
+          case 'delivered':
+            message = `Your order #${orderId} has been delivered. Enjoy your purchase!`;
+            break;
+          case 'cancelled':
+            message = `Your order #${orderId} has been cancelled.`;
+            break;
+          default:
+            message = `Your order #${orderId} status has been updated to ${status}.`;
+        }
+        
+        // Create notification for the buyer
+        await storage.createNotification({
+          userId: order.buyerId,
+          type: 'order_update',
+          title,
+          message,
+          data: { orderId, status },
+          isRead: false
+        });
+        
+        console.log(`Created notification for order #${orderId} status change to ${status}`);
+      } catch (notificationError) {
+        console.error('Failed to create notification:', notificationError);
+        // Don't fail the request if notification creation fails
+      }
+      
       res.json(updatedOrder);
     } catch (error) {
-      res.status(400).json({ message: error.message });
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
