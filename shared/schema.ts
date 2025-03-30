@@ -87,30 +87,36 @@ export const cartItems = pgTable("cart_items", {
 });
 
 // Zod Schemas
-export const insertUserSchema = z.object({
-  email: z.string().email(),
-  username: z.string().min(3),
-  password: z.string().min(8),
-  role: z.enum(['buyer', 'seller', 'admin']).default('buyer'),
-  name: z.string().min(2),
-  birthday: z.string().transform((date) => {
-    const birthDate = new Date(date);
-    const minAge = 13;
-    const maxAge = 120;
-    const today = new Date();
-    const age = today.getFullYear() - birthDate.getFullYear();
-    
-    if (isNaN(birthDate.getTime())) {
-      throw new Error('Invalid date format');
-    }
-    
-    if (age < minAge || age > maxAge) {
-      throw new Error(`Age must be between ${minAge} and ${maxAge} years`);
-    }
-    
-    return birthDate;
-  }),
-  confirmPassword: z.string()
+export const baseUserSchema = createInsertSchema(users).pick({
+  email: true,
+  username: true,
+  password: true,
+  role: true,
+  name: true,
+  birthday: true,
+});
+
+export const insertUserSchema = baseUserSchema.extend({
+  confirmPassword: z.string(),
+  birthday: z.string()
+    .transform((date) => {
+      const birthDate = new Date(date);
+      const minAge = 13;
+      const maxAge = 120;
+      const today = new Date();
+      const age = today.getFullYear() - birthDate.getFullYear();
+      
+      if (isNaN(birthDate.getTime())) {
+        throw new Error('Invalid date format');
+      }
+      
+      if (age < minAge || age > maxAge) {
+        throw new Error(`Age must be between ${minAge} and ${maxAge} years`);
+      }
+      
+      return birthDate;
+    })
+    .optional(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
