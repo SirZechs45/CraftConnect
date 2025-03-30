@@ -10,6 +10,8 @@ interface CartProduct {
   price: number;
   quantityAvailable: number;
   images: string[];
+  colorOptions?: string[];
+  variants?: string[];
 }
 
 interface CartItem {
@@ -17,12 +19,16 @@ interface CartItem {
   userId: number;
   productId: number;
   quantity: number;
+  selectedColor?: string;
+  selectedVariant?: string;
   product: CartProduct;
 }
 
 interface AddToCartInput {
   productId: number;
   quantity: number;
+  selectedColor?: string;
+  selectedVariant?: string;
 }
 
 // Cart context interface

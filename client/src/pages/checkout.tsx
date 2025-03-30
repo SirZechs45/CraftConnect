@@ -6,6 +6,7 @@ import { useCart } from '@/hooks/useCart';
 import { useAuth } from '@/lib/auth';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
+import { formatPrice } from '@/lib/utils';
 
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
@@ -74,32 +75,20 @@ export default function Checkout() {
     createPaymentIntent();
   }, [cartItems, cartTotal, isAuthenticated, navigate, toast]);
 
-  // Format price
-  const formattedSubtotal = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  }).format(cartTotal);
+  // Calculate and format price values
+  const formattedSubtotal = formatPrice(cartTotal);
 
-  // Estimate tax (e.g., 8%)
-  const estimatedTax = cartTotal * 0.08;
-  const formattedTax = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  }).format(estimatedTax);
+  // Estimate tax (e.g., 18% GST)
+  const estimatedTax = cartTotal * 0.18;
+  const formattedTax = formatPrice(estimatedTax);
 
-  // Shipping cost (free for orders over $50)
-  const shippingCost = cartTotal > 50 ? 0 : 5.99;
-  const formattedShipping = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  }).format(shippingCost);
+  // Shipping cost (free for orders over ₹4000)
+  const shippingCost = cartTotal > 4000 ? 0 : 499;
+  const formattedShipping = formatPrice(shippingCost);
 
   // Total with tax and shipping
   const orderTotal = cartTotal + estimatedTax + shippingCost;
-  const formattedTotal = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  }).format(orderTotal);
+  const formattedTotal = formatPrice(orderTotal);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -137,7 +126,7 @@ export default function Checkout() {
                               Qty: {item.quantity}
                             </span>
                             <span className="font-medium">
-                              ${(Number(item.product.price) * item.quantity).toFixed(2)}
+                              {formatPrice(Number(item.product.price) * item.quantity)}
                             </span>
                           </div>
                         </div>
@@ -177,7 +166,7 @@ export default function Checkout() {
                     <svg className="h-4 w-4 mr-2 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
-                    Free shipping on orders over $50
+                    Free shipping on orders over ₹4,000
                   </p>
                   <p className="flex items-center">
                     <svg className="h-4 w-4 mr-2 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">

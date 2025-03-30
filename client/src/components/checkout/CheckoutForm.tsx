@@ -7,6 +7,8 @@ import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { useCart } from "@/hooks/useCart";
 import { apiRequest } from "@/lib/queryClient";
+import { useAuth } from "@/lib/auth";
+import { formatPrice } from "@/lib/utils";
 
 import {
   Form,
@@ -39,6 +41,7 @@ export default function CheckoutForm() {
   const { toast } = useToast();
   const [_, navigate] = useLocation();
   const { cartTotal, cartItems, clearCart } = useCart();
+  const { user } = useAuth();
   
   const stripe = useStripe();
   const elements = useElements();
@@ -65,17 +68,23 @@ export default function CheckoutForm() {
     setIsLoading(true);
 
     try {
+      if (!user) {
+        throw new Error("You must be logged in to place an order");
+      }
+      
       // Create order in database
       const orderData = {
         order: {
-          buyerId: 1, // Replace with actual user ID from auth context
-          totalAmount: cartTotal,
+          buyerId: user.id,
+          totalAmount: cartTotal.toString(), // Convert to string to avoid type error
           orderStatus: "pending",
         },
         items: cartItems.map(item => ({
           productId: item.product.id,
           quantity: item.quantity,
-          unitPrice: Number(item.product.price),
+          unitPrice: item.product.price.toString(), // Convert to string to avoid type error
+          selectedColor: item.selectedColor || null,
+          selectedVariant: item.selectedVariant || null,
         })),
       };
 
@@ -169,7 +178,7 @@ export default function CheckoutForm() {
               <FormItem>
                 <FormLabel>City</FormLabel>
                 <FormControl>
-                  <Input placeholder="New York" {...field} />
+                  <Input placeholder="Mumbai" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -183,7 +192,7 @@ export default function CheckoutForm() {
               <FormItem>
                 <FormLabel>State/Province</FormLabel>
                 <FormControl>
-                  <Input placeholder="NY" {...field} />
+                  <Input placeholder="Maharashtra" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -199,7 +208,7 @@ export default function CheckoutForm() {
               <FormItem>
                 <FormLabel>ZIP / Postal Code</FormLabel>
                 <FormControl>
-                  <Input placeholder="10001" {...field} />
+                  <Input placeholder="400001" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -213,7 +222,7 @@ export default function CheckoutForm() {
               <FormItem>
                 <FormLabel>Country</FormLabel>
                 <FormControl>
-                  <Input placeholder="United States" {...field} />
+                  <Input placeholder="India" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -228,7 +237,7 @@ export default function CheckoutForm() {
             <FormItem className="mb-6">
               <FormLabel>Phone Number</FormLabel>
               <FormControl>
-                <Input placeholder="(123) 456-7890" {...field} />
+                <Input placeholder="+91 98765 43210" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -247,7 +256,7 @@ export default function CheckoutForm() {
           disabled={isLoading || !stripe || !elements} 
           className="w-full"
         >
-          {isLoading ? "Processing..." : `Pay ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cartTotal)}`}
+          {isLoading ? "Processing..." : `Pay ${formatPrice(cartTotal)}`}
         </Button>
       </form>
     </Form>
