@@ -19,6 +19,8 @@ import NewProduct from "@/pages/dashboard/seller/products/new";
 import SellerOrders from "@/pages/dashboard/seller/orders";
 import BuyerDashboard from "@/pages/dashboard/buyer/index";
 import BuyerOrders from "@/pages/dashboard/buyer/orders";
+import BuyerProfile from "@/pages/dashboard/buyer/profile";
+import SellerProfile from "@/pages/dashboard/seller/profile";
 import AdminDashboard from "@/pages/dashboard/admin/index";
 import AdminUsers from "@/pages/dashboard/admin/users";
 import AdminProducts from "@/pages/dashboard/admin/products";
@@ -41,12 +43,14 @@ function Router() {
       {/* Buyer Routes */}
       <Route path="/dashboard/buyer" component={BuyerDashboard} />
       <Route path="/dashboard/buyer/orders" component={BuyerOrders} />
+      <Route path="/dashboard/buyer/profile" component={BuyerProfile} />
       
       {/* Seller Routes */}
       <Route path="/dashboard/seller" component={SellerDashboard} />
       <Route path="/dashboard/seller/products" component={SellerProducts} />
       <Route path="/dashboard/seller/products/new" component={NewProduct} />
       <Route path="/dashboard/seller/orders" component={SellerOrders} />
+      <Route path="/dashboard/seller/profile" component={SellerProfile} />
       
       {/* Admin Routes */}
       <Route path="/dashboard/admin" component={AdminDashboard} />
