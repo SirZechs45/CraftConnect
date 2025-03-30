@@ -91,27 +91,29 @@ export default function CheckoutForm() {
       // Create order
       await apiRequest("POST", "/api/orders", orderData);
       
-      // Process payment with Stripe
+      // Process payment with Stripe - this will redirect to the return_url on success
       const { error } = await stripe.confirmPayment({
         elements,
         confirmParams: {
           return_url: window.location.origin + "/order-confirmation",
         },
+        redirect: "if_required",
       });
 
       if (error) {
         throw new Error(error.message || "Payment failed");
+      } else {
+        // If no redirect happened (e.g., using test mode or simulation), manually navigate
+        // Clear cart on successful payment
+        await clearCart();
+        
+        toast({
+          title: "Order Placed",
+          description: "Your order has been successfully placed!",
+        });
+        
+        navigate("/order-confirmation");
       }
-
-      // Clear cart on successful payment
-      clearCart();
-      
-      toast({
-        title: "Order Placed",
-        description: "Your order has been successfully placed!",
-      });
-      
-      navigate("/order-confirmation");
     } catch (error: any) {
       toast({
         title: "Checkout Failed",

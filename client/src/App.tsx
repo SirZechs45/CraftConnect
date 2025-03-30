@@ -11,6 +11,7 @@ import Auth from "@/pages/auth";
 import ProductsPage from "@/pages/products/index";
 import ProductDetail from "@/pages/products/[id]";
 import Checkout from "@/pages/checkout";
+import OrderConfirmation from "@/pages/order-confirmation";
 import SellerDashboard from "@/pages/dashboard/seller/index";
 import SellerProducts from "@/pages/dashboard/seller/products";
 import NewProduct from "@/pages/dashboard/seller/products/new";
@@ -30,6 +31,7 @@ function Router() {
       
       {/* Protected Routes */}
       <Route path="/checkout" component={Checkout} />
+      <Route path="/order-confirmation" component={OrderConfirmation} />
       
       {/* Seller Routes */}
       <Route path="/dashboard/seller" component={SellerDashboard} />
