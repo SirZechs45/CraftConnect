@@ -5,11 +5,9 @@ import {
   orderItems, type OrderItem, type InsertOrderItem,
   reviews, type Review, type InsertReview,
   messages, type Message, type InsertMessage,
-  cartItems, type CartItem, type InsertCartItem
-} from "@shared/schema";
-import {
+  cartItems, type CartItem, type InsertCartItem,
   notifications, type Notification, type InsertNotification
-} from "@shared/notification-schema";
+} from "@shared/schema";
 import { db } from "./db";
 import { eq, like, or, and } from "drizzle-orm";
 

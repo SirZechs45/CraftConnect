@@ -14,9 +14,9 @@ import {
   insertOrderItemSchema, 
   insertReviewSchema, 
   insertMessageSchema, 
-  insertCartItemSchema 
+  insertCartItemSchema,
+  insertNotificationSchema
 } from "@shared/schema";
-import { insertNotificationSchema } from "@shared/notification-schema";
 import Stripe from "stripe";
 
 // Stripe setup
