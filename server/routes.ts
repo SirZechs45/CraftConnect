@@ -16,6 +16,7 @@ import {
   insertMessageSchema, 
   insertCartItemSchema 
 } from "@shared/schema";
+import { insertNotificationSchema } from "@shared/notification-schema";
 import Stripe from "stripe";
 
 // Stripe setup
@@ -771,6 +772,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Notification Routes
+  app.get('/api/notifications', isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.session.userId;
+      // This would need to be implemented in storage.ts
+      const notifications = await storage.getNotificationsForUser(userId);
+      res.json(notifications);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Unknown error' });
+    }
+  });
+
+  app.put('/api/notifications/:id/read', isAuthenticated, async (req, res) => {
+    try {
+      const notificationId = Number(req.params.id);
+      const userId = req.session.userId;
+      
+      // This would need to be implemented in storage.ts
+      const notification = await storage.getNotification(notificationId);
+      
+      if (!notification) {
+        return res.status(404).json({ message: 'Notification not found' });
+      }
+      
+      if (notification.userId !== userId) {
+        return res.status(403).json({ message: 'You can only mark your own notifications as read' });
+      }
+      
+      const updatedNotification = await storage.markNotificationAsRead(notificationId);
+      res.json(updatedNotification);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Unknown error' });
+    }
+  });
+
+  app.put('/api/notifications/read-all', isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.session.userId;
+      
+      // This would need to be implemented in storage.ts
+      const success = await storage.markAllNotificationsAsRead(userId);
+      
+      if (success) {
+        res.json({ message: 'All notifications marked as read' });
+      } else {
+        res.status(500).json({ message: 'Failed to mark notifications as read' });
+      }
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Unknown error' });
+    }
+  });
+
+  app.post('/api/notifications', isAuthenticated, async (req, res) => {
+    try {
+      const notificationData = insertNotificationSchema.parse(req.body);
+      
+      // Ensure admin or self can create notifications
+      const user = await storage.getUser(req.session.userId);
+      if (user?.role !== 'admin' && notificationData.userId !== req.session.userId) {
+        return res.status(403).json({ message: 'You can only create notifications for yourself' });
+      }
+      
+      // This would need to be implemented in storage.ts
+      const notification = await storage.createNotification(notificationData);
+      res.status(201).json(notification);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Unknown error' });
+    }
+  });
+
   // Payment Routes
   app.post('/api/create-payment-intent', isAuthenticated, async (req, res) => {
     try {
@@ -789,7 +860,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         clientSecret: paymentIntent.client_secret
       });
     } catch (error) {
-      res.status(400).json({ message: error.message });
+      res.status(400).json({ message: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 

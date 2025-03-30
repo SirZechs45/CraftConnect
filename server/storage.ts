@@ -7,6 +7,9 @@ import {
   messages, type Message, type InsertMessage,
   cartItems, type CartItem, type InsertCartItem
 } from "@shared/schema";
+import {
+  notifications, type Notification, type InsertNotification
+} from "@shared/notification-schema";
 import { db } from "./db";
 import { eq, like, or, and } from "drizzle-orm";
 
@@ -55,6 +58,13 @@ export interface IStorage {
   updateCartItemQuantity(id: number, quantity: number): Promise<CartItem | undefined>;
   removeCartItem(id: number): Promise<boolean>;
   clearCart(userId: number): Promise<boolean>;
+  
+  // Notification methods
+  getNotification(id: number): Promise<Notification | undefined>;
+  getNotificationsForUser(userId: number): Promise<Notification[]>;
+  createNotification(notification: InsertNotification): Promise<Notification>;
+  markNotificationAsRead(id: number): Promise<Notification | undefined>;
+  markAllNotificationsAsRead(userId: number): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -65,6 +75,7 @@ export class MemStorage implements IStorage {
   private reviews: Map<number, Review>;
   private messages: Map<number, Message>;
   private cartItems: Map<number, CartItem>;
+  private notifications: Map<number, Notification>;
   private userId: number;
   private productId: number;
   private orderId: number;
@@ -72,6 +83,7 @@ export class MemStorage implements IStorage {
   private reviewId: number;
   private messageId: number;
   private cartItemId: number;
+  private notificationId: number;
 
   constructor() {
     this.users = new Map();
@@ -81,6 +93,7 @@ export class MemStorage implements IStorage {
     this.reviews = new Map();
     this.messages = new Map();
     this.cartItems = new Map();
+    this.notifications = new Map();
     this.userId = 1;
     this.productId = 1;
     this.orderId = 1;
@@ -88,6 +101,7 @@ export class MemStorage implements IStorage {
     this.reviewId = 1;
     this.messageId = 1;
     this.cartItemId = 1;
+    this.notificationId = 1;
     
     // Create admin user
     this.createUser({
@@ -402,6 +416,53 @@ export class MemStorage implements IStorage {
     
     for (const item of userCartItems) {
       this.cartItems.delete(item.id);
+    }
+    
+    return true;
+  }
+  
+  // Notification methods
+  async getNotification(id: number): Promise<Notification | undefined> {
+    return this.notifications.get(id);
+  }
+  
+  async getNotificationsForUser(userId: number): Promise<Notification[]> {
+    return Array.from(this.notifications.values()).filter(
+      (notification) => notification.userId === userId
+    );
+  }
+  
+  async createNotification(insertNotification: InsertNotification): Promise<Notification> {
+    const id = this.notificationId++;
+    const now = new Date();
+    const notification: Notification = {
+      ...insertNotification,
+      id,
+      createdAt: now,
+      data: insertNotification.data || null
+    };
+    this.notifications.set(id, notification);
+    return notification;
+  }
+  
+  async markNotificationAsRead(id: number): Promise<Notification | undefined> {
+    const notification = this.notifications.get(id);
+    if (!notification) return undefined;
+    
+    const updatedNotification: Notification = {
+      ...notification,
+      isRead: true
+    };
+    
+    this.notifications.set(id, updatedNotification);
+    return updatedNotification;
+  }
+  
+  async markAllNotificationsAsRead(userId: number): Promise<boolean> {
+    const userNotifications = this.getNotificationsForUser(userId);
+    
+    for (const notification of await userNotifications) {
+      await this.markNotificationAsRead(notification.id);
     }
     
     return true;
@@ -776,6 +837,63 @@ export class DatabaseStorage implements IStorage {
       return true;
     } catch (error) {
       console.error("Error clearing cart:", error);
+      return false;
+    }
+  }
+  
+  // Notification methods
+  async getNotification(id: number): Promise<Notification | undefined> {
+    try {
+      const [notification] = await db.select().from(notifications).where(eq(notifications.id, id));
+      return notification;
+    } catch (error) {
+      console.error("Error getting notification:", error);
+      return undefined;
+    }
+  }
+  
+  async getNotificationsForUser(userId: number): Promise<Notification[]> {
+    try {
+      return await db.select().from(notifications).where(eq(notifications.userId, userId));
+    } catch (error) {
+      console.error("Error getting notifications for user:", error);
+      return [];
+    }
+  }
+  
+  async createNotification(notification: InsertNotification): Promise<Notification> {
+    try {
+      const [newNotification] = await db.insert(notifications).values(notification).returning();
+      return newNotification;
+    } catch (error) {
+      console.error("Error creating notification:", error);
+      throw error;
+    }
+  }
+  
+  async markNotificationAsRead(id: number): Promise<Notification | undefined> {
+    try {
+      const [updatedNotification] = await db
+        .update(notifications)
+        .set({ isRead: true })
+        .where(eq(notifications.id, id))
+        .returning();
+      return updatedNotification;
+    } catch (error) {
+      console.error("Error marking notification as read:", error);
+      return undefined;
+    }
+  }
+  
+  async markAllNotificationsAsRead(userId: number): Promise<boolean> {
+    try {
+      await db
+        .update(notifications)
+        .set({ isRead: true })
+        .where(eq(notifications.userId, userId));
+      return true;
+    } catch (error) {
+      console.error("Error marking all notifications as read:", error);
       return false;
     }
   }
