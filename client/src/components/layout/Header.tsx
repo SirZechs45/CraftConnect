@@ -71,7 +71,7 @@ export default function Header() {
             <Link href="/" className="flex items-center">
               <Store className="text-primary text-2xl mr-2" />
               <span className="font-serif font-semibold text-xl text-primary">
-                ArtisanBazaar
+                CraftConnect
               </span>
             </Link>
           </div>
