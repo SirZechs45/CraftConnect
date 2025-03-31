@@ -17,9 +17,11 @@ import SellerDashboard from "@/pages/dashboard/seller/index";
 import SellerProducts from "@/pages/dashboard/seller/products";
 import NewProduct from "@/pages/dashboard/seller/products/new";
 import SellerOrders from "@/pages/dashboard/seller/orders";
+import SellerModificationRequests from "@/pages/dashboard/seller/modification-requests";
 import BuyerDashboard from "@/pages/dashboard/buyer/index";
 import BuyerOrders from "@/pages/dashboard/buyer/orders";
 import BuyerProfile from "@/pages/dashboard/buyer/profile";
+import BuyerModificationRequests from "@/pages/dashboard/buyer/modification-requests";
 import SellerProfile from "@/pages/dashboard/seller/profile";
 import AdminDashboard from "@/pages/dashboard/admin/index";
 import AdminUsers from "@/pages/dashboard/admin/users";
@@ -44,6 +46,7 @@ function Router() {
       <Route path="/dashboard/buyer" component={BuyerDashboard} />
       <Route path="/dashboard/buyer/orders" component={BuyerOrders} />
       <Route path="/dashboard/buyer/profile" component={BuyerProfile} />
+      <Route path="/dashboard/buyer/modification-requests" component={BuyerModificationRequests} />
       
       {/* Seller Routes */}
       <Route path="/dashboard/seller" component={SellerDashboard} />
@@ -51,6 +54,7 @@ function Router() {
       <Route path="/dashboard/seller/products/new" component={NewProduct} />
       <Route path="/dashboard/seller/orders" component={SellerOrders} />
       <Route path="/dashboard/seller/profile" component={SellerProfile} />
+      <Route path="/dashboard/seller/modification-requests" component={SellerModificationRequests} />
       
       {/* Admin Routes */}
       <Route path="/dashboard/admin" component={AdminDashboard} />

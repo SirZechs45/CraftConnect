@@ -27,7 +27,7 @@ export function BuyerModificationRequests() {
   const [_, setLocation] = useLocation();
   
   // Query to fetch the buyer's modification requests
-  const { data: requests, isLoading, error } = useQuery({
+  const { data: requests = [], isLoading, error } = useQuery<ModificationRequest[]>({
     queryKey: ['/api/product-modification-requests/buyer'],
     staleTime: 1000 * 60 * 5, // 5 minutes
   });

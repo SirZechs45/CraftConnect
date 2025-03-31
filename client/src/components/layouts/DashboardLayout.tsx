@@ -22,7 +22,7 @@ interface SidebarLink {
   icon: ReactNode;
 }
 
-export default function DashboardLayout({ children }: { children: ReactNode }) {
+export default function DashboardLayout({ children, role }: { children: ReactNode, role?: string }) {
   const { user, logout } = useAuth();
   const [location] = useLocation();
   
@@ -30,21 +30,25 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     return <div>Loading...</div>;
   }
   
-  // Define sidebar links based on user role
+  // Define sidebar links based on user role or provided role prop
   const sidebarLinks: SidebarLink[] = [];
   
-  if (user.role === 'buyer') {
+  const userRole = role || user.role;
+  
+  if (userRole === 'buyer') {
     sidebarLinks.push(
       { href: '/dashboard/buyer', label: 'Dashboard', icon: <LayoutDashboard className="h-5 w-5" /> },
-      { href: '/dashboard/buyer/orders', label: 'My Orders', icon: <Package className="h-5 w-5" /> }
+      { href: '/dashboard/buyer/orders', label: 'My Orders', icon: <Package className="h-5 w-5" /> },
+      { href: '/dashboard/buyer/modification-requests', label: 'Modification Requests', icon: <ShoppingCart className="h-5 w-5" /> }
     );
-  } else if (user.role === 'seller') {
+  } else if (userRole === 'seller') {
     sidebarLinks.push(
       { href: '/dashboard/seller', label: 'Dashboard', icon: <LayoutDashboard className="h-5 w-5" /> },
       { href: '/dashboard/seller/products', label: 'My Products', icon: <Store className="h-5 w-5" /> },
-      { href: '/dashboard/seller/orders', label: 'Orders', icon: <ShoppingBag className="h-5 w-5" /> }
+      { href: '/dashboard/seller/orders', label: 'Orders', icon: <ShoppingBag className="h-5 w-5" /> },
+      { href: '/dashboard/seller/modification-requests', label: 'Modification Requests', icon: <ShoppingCart className="h-5 w-5" /> }
     );
-  } else if (user.role === 'admin') {
+  } else if (userRole === 'admin') {
     sidebarLinks.push(
       { href: '/dashboard/admin', label: 'Dashboard', icon: <LayoutDashboard className="h-5 w-5" /> },
       { href: '/dashboard/admin/users', label: 'Users', icon: <User className="h-5 w-5" /> },

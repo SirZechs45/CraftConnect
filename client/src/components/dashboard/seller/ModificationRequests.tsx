@@ -54,7 +54,7 @@ export function SellerModificationRequests() {
   const [status, setStatus] = useState<string>("approved");
   
   // Query to fetch modification requests
-  const { data: requests, isLoading, error } = useQuery({
+  const { data: requests = [], isLoading, error } = useQuery<ModificationRequest[]>({
     queryKey: ['/api/product-modification-requests/seller'],
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
