@@ -120,8 +120,15 @@ export default function BuyerProfile() {
   const onSubmit = async (values: ProfileFormValues) => {
     setIsUpdating(true);
     try {
+      // Convert Date objects to ISO strings for API compatibility
+      const formattedValues = {
+        ...values,
+        // Convert birthday from Date to ISO string if it exists
+        birthday: values.birthday ? values.birthday.toISOString() : undefined,
+      };
+      
       // Use the auth context's updateUserProfile function
-      const updatedUser = await updateUserProfile(values);
+      const updatedUser = await updateUserProfile(formattedValues);
       
       if (updatedUser) {
         toast({
@@ -153,59 +160,82 @@ export default function BuyerProfile() {
 
   return (
     <DashboardLayout>
-      <div className="container py-10">
+      <div className="container py-6 px-4 md:py-10 md:px-6">
         <div className="flex flex-col space-y-6">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Profile</h1>
-            <p className="text-muted-foreground">
+          <div className="text-center md:text-left">
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Profile</h1>
+            <p className="text-muted-foreground mt-1">
               Manage your personal information and preferences
             </p>
           </div>
 
           <Separator />
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
             {/* Profile summary card */}
-            <Card className="md:col-span-1">
-              <CardHeader>
-                <CardTitle>Your Profile</CardTitle>
-                <CardDescription>Summary of your account information</CardDescription>
-              </CardHeader>
-              <CardContent className="flex flex-col items-center space-y-4">
-                <Avatar className="h-28 w-28">
-                  <AvatarImage src={user?.profileImage} />
-                  <AvatarFallback className="text-2xl">{user?.name?.charAt(0)}</AvatarFallback>
-                </Avatar>
-                <div className="space-y-1 text-center">
-                  <h3 className="font-medium text-lg">{user?.name}</h3>
-                  <p className="text-sm text-muted-foreground">@{user?.username}</p>
-                  <p className="text-sm text-muted-foreground">{user?.email}</p>
-                </div>
-                <Separator />
-                <div className="w-full space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Account Type</span>
-                    <span className="text-sm font-medium capitalize">{user?.role}</span>
+            <div className="lg:col-span-1 space-y-6">
+              <Card className="shadow-sm hover:shadow transition-shadow duration-200">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-center md:text-left">Your Profile</CardTitle>
+                  <CardDescription className="text-center md:text-left">Summary of your account information</CardDescription>
+                </CardHeader>
+                <CardContent className="flex flex-col items-center space-y-5">
+                  <div className="relative">
+                    <Avatar className="h-28 w-28 border-4 border-primary/10">
+                      <AvatarImage src={user?.profileImage} />
+                      <AvatarFallback className="text-2xl bg-primary/5">{user?.name?.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <div className="absolute bottom-0 right-0 bg-primary text-white rounded-full p-1.5 shadow-md">
+                      <CalendarIcon className="h-4 w-4" />
+                    </div>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Location</span>
-                    <span className="text-sm font-medium">
-                      {user?.city ? `${user.city}, ${user.state}` : "Not specified"}
+                  <div className="space-y-1 text-center w-full">
+                    <h3 className="font-semibold text-xl">{user?.name || "Your Name"}</h3>
+                    <p className="text-sm text-muted-foreground">@{user?.username || "username"}</p>
+                    <p className="text-sm text-muted-foreground break-all">{user?.email || "email@example.com"}</p>
+                  </div>
+                  <Separator className="w-full" />
+                  <div className="w-full space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium text-muted-foreground">Account Type</span>
+                      <span className="text-sm font-semibold capitalize bg-primary/10 px-2.5 py-1 rounded-full">{user?.role || "buyer"}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium text-muted-foreground">Location</span>
+                      <span className="text-sm font-medium">
+                        {user?.city ? `${user.city}, ${user.state}` : "Not specified"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium text-muted-foreground">Member Since</span>
+                      <span className="text-sm font-medium">
+                        {user?.created_at ? format(new Date(user.created_at), "MMM yyyy") : ""}
+                      </span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              {/* Birthday Discount Card */}
+              <Card className="bg-gradient-to-r from-primary/10 to-primary/5 shadow-sm">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg">Birthday Discount</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm mb-3">Celebrate your special day with a special discount! Update your birth date in your profile.</p>
+                  <div className="flex justify-between items-center p-3 bg-white/80 rounded-lg">
+                    <span className="text-sm font-medium">Your Birthday</span>
+                    <span className="font-semibold">
+                      {user?.birthday ? format(new Date(user.birthday), "MMM d") : "Not set"}
                     </span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Member Since</span>
-                    <span className="text-sm font-medium">
-                      {user?.created_at ? format(new Date(user.created_at), "MMM yyyy") : ""}
-                    </span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </div>
 
             {/* Edit profile form */}
-            <Card className="md:col-span-2">
-              <CardHeader>
+            <Card className="lg:col-span-2 shadow-sm hover:shadow transition-shadow duration-200">
+              <CardHeader className="pb-4">
                 <CardTitle>Edit Profile</CardTitle>
                 <CardDescription>
                   Update your profile information and preferences
@@ -214,7 +244,7 @@ export default function BuyerProfile() {
               <CardContent>
                 <Form {...form}>
                   <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                       <FormField
                         control={form.control}
                         name="name"
@@ -222,7 +252,7 @@ export default function BuyerProfile() {
                           <FormItem>
                             <FormLabel>Full Name</FormLabel>
                             <FormControl>
-                              <Input placeholder="Enter your full name" {...field} />
+                              <Input placeholder="Enter your full name" {...field} className="focus:border-primary" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -235,7 +265,7 @@ export default function BuyerProfile() {
                           <FormItem>
                             <FormLabel>Username</FormLabel>
                             <FormControl>
-                              <Input placeholder="Choose a username" {...field} />
+                              <Input placeholder="Choose a username" {...field} className="focus:border-primary" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>

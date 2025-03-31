@@ -166,8 +166,15 @@ export default function SellerProfile() {
   const onSubmit = async (values: ProfileFormValues) => {
     setIsUpdating(true);
     try {
+      // Convert Date objects to ISO strings for API compatibility
+      const formattedValues = {
+        ...values,
+        // Convert birthday from Date to ISO string if it exists
+        birthday: values.birthday ? values.birthday.toISOString() : undefined,
+      };
+      
       // Use the auth context's updateUserProfile function
-      const updatedUser = await updateUserProfile(values);
+      const updatedUser = await updateUserProfile(formattedValues);
       
       if (updatedUser) {
         toast({
@@ -199,52 +206,60 @@ export default function SellerProfile() {
 
   return (
     <DashboardLayout>
-      <div className="container py-10">
+      <div className="container py-6 px-4 md:py-10 md:px-6">
         <div className="flex flex-col space-y-6">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Seller Profile</h1>
-            <p className="text-muted-foreground">
+          <div className="text-center md:text-left">
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Seller Profile</h1>
+            <p className="text-muted-foreground mt-1">
               Manage your seller profile, business information, and payment details
             </p>
           </div>
 
           <Separator />
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
             {/* Profile summary card */}
-            <div className="md:col-span-1 space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Your Profile</CardTitle>
-                  <CardDescription>Summary of your seller account</CardDescription>
+            <div className="lg:col-span-1 space-y-6">
+              <Card className="shadow-sm hover:shadow transition-shadow duration-200">
+                <CardHeader className="pb-4">
+                  <CardTitle className="flex items-center justify-center md:justify-start gap-2">
+                    <span>Your Profile</span>
+                    <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+                  </CardTitle>
+                  <CardDescription className="text-center md:text-left">Summary of your seller account</CardDescription>
                 </CardHeader>
-                <CardContent className="flex flex-col items-center space-y-4">
-                  <Avatar className="h-28 w-28">
-                    <AvatarImage src={user?.profileImage} />
-                    <AvatarFallback className="text-2xl">{user?.name?.charAt(0)}</AvatarFallback>
-                  </Avatar>
-                  <div className="space-y-1 text-center">
-                    <h3 className="font-medium text-lg">{user?.name}</h3>
-                    <p className="text-sm text-muted-foreground">@{user?.username}</p>
-                    <p className="text-sm text-muted-foreground">{user?.email}</p>
+                <CardContent className="flex flex-col items-center space-y-5">
+                  <div className="relative">
+                    <Avatar className="h-28 w-28 border-4 border-primary/10">
+                      <AvatarImage src={user?.profileImage} />
+                      <AvatarFallback className="text-2xl bg-primary/5">{user?.name?.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <div className="absolute bottom-0 right-0 bg-primary text-white rounded-full p-1.5 shadow-md">
+                      <ShoppingBag className="h-4 w-4" />
+                    </div>
+                  </div>
+                  <div className="space-y-1 text-center w-full">
+                    <h3 className="font-semibold text-xl">{user?.name || "Your Name"}</h3>
+                    <p className="text-sm text-muted-foreground">@{user?.username || "username"}</p>
+                    <p className="text-sm text-muted-foreground break-all">{user?.email || "email@example.com"}</p>
                     {user?.businessName && (
-                      <p className="font-medium text-primary mt-2">{user.businessName}</p>
+                      <p className="font-medium text-primary mt-2 border-t border-primary/10 pt-2">{user.businessName}</p>
                     )}
                   </div>
-                  <Separator />
-                  <div className="w-full space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">Account Type</span>
-                      <span className="text-sm font-medium capitalize">{user?.role}</span>
+                  <Separator className="w-full" />
+                  <div className="w-full space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium text-muted-foreground">Account Type</span>
+                      <span className="text-sm font-semibold capitalize bg-primary/10 px-2.5 py-1 rounded-full">{user?.role || "seller"}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">Location</span>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium text-muted-foreground">Location</span>
                       <span className="text-sm font-medium">
                         {user?.city ? `${user.city}, ${user.state}` : "Not specified"}
                       </span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">Member Since</span>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium text-muted-foreground">Member Since</span>
                       <span className="text-sm font-medium">
                         {user?.created_at ? format(new Date(user.created_at), "MMM yyyy") : ""}
                       </span>
@@ -254,29 +269,29 @@ export default function SellerProfile() {
               </Card>
 
               {/* Seller stats card */}
-              <Card>
-                <CardHeader>
+              <Card className="shadow-sm hover:shadow transition-shadow duration-200 overflow-hidden">
+                <CardHeader className="pb-2 bg-gradient-to-r from-primary/20 to-primary/5">
                   <CardTitle>Seller Statistics</CardTitle>
                   <CardDescription>Overview of your seller performance</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="pt-6">
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-primary/10 p-4 rounded-lg flex flex-col items-center">
+                    <div className="bg-primary/10 p-4 rounded-lg flex flex-col items-center hover:bg-primary/20 transition-colors cursor-default">
                       <ShoppingBag className="h-6 w-6 text-primary mb-2" />
                       <span className="text-2xl font-bold">0</span>
                       <span className="text-sm text-muted-foreground">Products</span>
                     </div>
-                    <div className="bg-primary/10 p-4 rounded-lg flex flex-col items-center">
+                    <div className="bg-primary/10 p-4 rounded-lg flex flex-col items-center hover:bg-primary/20 transition-colors cursor-default">
                       <Star className="h-6 w-6 text-primary mb-2" />
                       <span className="text-2xl font-bold">-</span>
                       <span className="text-sm text-muted-foreground">Rating</span>
                     </div>
-                    <div className="bg-primary/10 p-4 rounded-lg flex flex-col items-center">
+                    <div className="bg-primary/10 p-4 rounded-lg flex flex-col items-center hover:bg-primary/20 transition-colors cursor-default">
                       <Users className="h-6 w-6 text-primary mb-2" />
                       <span className="text-2xl font-bold">0</span>
                       <span className="text-sm text-muted-foreground">Customers</span>
                     </div>
-                    <div className="bg-primary/10 p-4 rounded-lg flex flex-col items-center">
+                    <div className="bg-primary/10 p-4 rounded-lg flex flex-col items-center hover:bg-primary/20 transition-colors cursor-default">
                       <ShoppingBag className="h-6 w-6 text-primary mb-2" />
                       <span className="text-2xl font-bold">0</span>
                       <span className="text-sm text-muted-foreground">Orders</span>
@@ -287,8 +302,8 @@ export default function SellerProfile() {
             </div>
 
             {/* Edit profile form */}
-            <Card className="md:col-span-2">
-              <CardHeader>
+            <Card className="lg:col-span-2 shadow-sm hover:shadow transition-shadow duration-200">
+              <CardHeader className="pb-4 bg-gradient-to-r from-transparent to-primary/5">
                 <CardTitle>Edit Seller Profile</CardTitle>
                 <CardDescription>
                   Update your profile, business information, and payment details
@@ -297,9 +312,12 @@ export default function SellerProfile() {
               <CardContent>
                 <Form {...form}>
                   <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                    <div className="space-y-4">
-                      <h3 className="text-lg font-medium">Personal Information</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-5">
+                      <div className="flex items-center">
+                        <h3 className="text-lg font-medium">Personal Information</h3>
+                        <div className="ml-3 h-px bg-primary/20 flex-grow"></div>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                         <FormField
                           control={form.control}
                           name="name"
@@ -307,7 +325,7 @@ export default function SellerProfile() {
                             <FormItem>
                               <FormLabel>Full Name</FormLabel>
                               <FormControl>
-                                <Input placeholder="Enter your full name" {...field} />
+                                <Input placeholder="Enter your full name" {...field} className="focus:border-primary" />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -320,7 +338,7 @@ export default function SellerProfile() {
                             <FormItem>
                               <FormLabel>Username</FormLabel>
                               <FormControl>
-                                <Input placeholder="Choose a username" {...field} />
+                                <Input placeholder="Choose a username" {...field} className="focus:border-primary" />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
