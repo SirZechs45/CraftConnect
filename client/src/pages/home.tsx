@@ -97,7 +97,7 @@ export default function Home() {
                 </div>
                 <div className="space-y-4 mt-10">
                   <img 
-                    src="https://images.unsplash.com/photo-1606722590483-f8f1d8027661?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=500&q=80" 
+                    src="https://media.istockphoto.com/id/2160842223/photo/many-wicker-baskets-on-handicraft-market-new-wickerwork-hand-made-basket-bamboo-containers.webp?a=1&b=1&s=612x612&w=0&k=20&c=dnP6x0Yp-te5ukLwPr6xE8SW88tGMCxGcmzgyLzUh1E=&auto=format&fit=crop&w=500&q=80" 
                     alt="Weaved basket" 
                     className="rounded-lg shadow-lg h-56 w-full object-cover" 
                   />
