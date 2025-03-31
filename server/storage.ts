@@ -6,7 +6,8 @@ import {
   reviews, type Review, type InsertReview,
   messages, type Message, type InsertMessage,
   cartItems, type CartItem, type InsertCartItem,
-  notifications, type Notification, type InsertNotification
+  notifications, type Notification, type InsertNotification,
+  productModificationRequests, type ProductModificationRequest, type InsertProductModificationRequest
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, like, or, and } from "drizzle-orm";
@@ -63,6 +64,14 @@ export interface IStorage {
   createNotification(notification: InsertNotification): Promise<Notification>;
   markNotificationAsRead(id: number): Promise<Notification | undefined>;
   markAllNotificationsAsRead(userId: number): Promise<boolean>;
+  
+  // Product Modification Request methods
+  getProductModificationRequest(id: number): Promise<ProductModificationRequest | undefined>;
+  getProductModificationRequestsForBuyer(buyerId: number): Promise<ProductModificationRequest[]>;
+  getProductModificationRequestsForSeller(sellerId: number): Promise<ProductModificationRequest[]>;
+  getProductModificationRequestsForProduct(productId: number): Promise<ProductModificationRequest[]>;
+  createProductModificationRequest(request: InsertProductModificationRequest): Promise<ProductModificationRequest>;
+  updateProductModificationRequestStatus(id: number, status: string, sellerResponse?: string): Promise<ProductModificationRequest | undefined>;
 }
 
 export class MemStorage implements IStorage {
@@ -464,6 +473,60 @@ export class MemStorage implements IStorage {
     }
     
     return true;
+  }
+  
+  // Product Modification Request methods
+  private productModificationRequests: Map<number, ProductModificationRequest> = new Map();
+  private productModificationRequestId: number = 1;
+  
+  async getProductModificationRequest(id: number): Promise<ProductModificationRequest | undefined> {
+    return this.productModificationRequests.get(id);
+  }
+  
+  async getProductModificationRequestsForBuyer(buyerId: number): Promise<ProductModificationRequest[]> {
+    return Array.from(this.productModificationRequests.values()).filter(
+      (request) => request.buyerId === buyerId
+    );
+  }
+  
+  async getProductModificationRequestsForSeller(sellerId: number): Promise<ProductModificationRequest[]> {
+    return Array.from(this.productModificationRequests.values()).filter(
+      (request) => request.sellerId === sellerId
+    );
+  }
+  
+  async getProductModificationRequestsForProduct(productId: number): Promise<ProductModificationRequest[]> {
+    return Array.from(this.productModificationRequests.values()).filter(
+      (request) => request.productId === productId
+    );
+  }
+  
+  async createProductModificationRequest(insertRequest: InsertProductModificationRequest): Promise<ProductModificationRequest> {
+    const id = this.productModificationRequestId++;
+    const now = new Date();
+    const request: ProductModificationRequest = {
+      ...insertRequest,
+      id,
+      createdAt: now,
+      updatedAt: now
+    };
+    this.productModificationRequests.set(id, request);
+    return request;
+  }
+  
+  async updateProductModificationRequestStatus(id: number, status: string, sellerResponse?: string): Promise<ProductModificationRequest | undefined> {
+    const request = this.productModificationRequests.get(id);
+    if (!request) return undefined;
+    
+    const updatedRequest: ProductModificationRequest = {
+      ...request,
+      status,
+      sellerResponse: sellerResponse || request.sellerResponse,
+      updatedAt: new Date()
+    };
+    
+    this.productModificationRequests.set(id, updatedRequest);
+    return updatedRequest;
   }
 }
 
@@ -893,6 +956,73 @@ export class DatabaseStorage implements IStorage {
     } catch (error) {
       console.error("Error marking all notifications as read:", error);
       return false;
+    }
+  }
+  
+  // Product Modification Request methods
+  async getProductModificationRequest(id: number): Promise<ProductModificationRequest | undefined> {
+    try {
+      const [request] = await db.select().from(productModificationRequests).where(eq(productModificationRequests.id, id));
+      return request;
+    } catch (error) {
+      console.error("Error getting product modification request:", error);
+      return undefined;
+    }
+  }
+  
+  async getProductModificationRequestsForBuyer(buyerId: number): Promise<ProductModificationRequest[]> {
+    try {
+      return await db.select().from(productModificationRequests).where(eq(productModificationRequests.buyerId, buyerId));
+    } catch (error) {
+      console.error("Error getting product modification requests for buyer:", error);
+      return [];
+    }
+  }
+  
+  async getProductModificationRequestsForSeller(sellerId: number): Promise<ProductModificationRequest[]> {
+    try {
+      return await db.select().from(productModificationRequests).where(eq(productModificationRequests.sellerId, sellerId));
+    } catch (error) {
+      console.error("Error getting product modification requests for seller:", error);
+      return [];
+    }
+  }
+  
+  async getProductModificationRequestsForProduct(productId: number): Promise<ProductModificationRequest[]> {
+    try {
+      return await db.select().from(productModificationRequests).where(eq(productModificationRequests.productId, productId));
+    } catch (error) {
+      console.error("Error getting product modification requests for product:", error);
+      return [];
+    }
+  }
+  
+  async createProductModificationRequest(request: InsertProductModificationRequest): Promise<ProductModificationRequest> {
+    try {
+      const [newRequest] = await db.insert(productModificationRequests).values(request).returning();
+      return newRequest;
+    } catch (error) {
+      console.error("Error creating product modification request:", error);
+      throw error;
+    }
+  }
+  
+  async updateProductModificationRequestStatus(id: number, status: string, sellerResponse?: string): Promise<ProductModificationRequest | undefined> {
+    try {
+      const updates: any = { status };
+      if (sellerResponse) {
+        updates.sellerResponse = sellerResponse;
+      }
+      
+      const [updatedRequest] = await db
+        .update(productModificationRequests)
+        .set(updates)
+        .where(eq(productModificationRequests.id, id))
+        .returning();
+      return updatedRequest;
+    } catch (error) {
+      console.error("Error updating product modification request status:", error);
+      return undefined;
     }
   }
 }

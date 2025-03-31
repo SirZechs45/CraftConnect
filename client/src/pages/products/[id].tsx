@@ -36,7 +36,9 @@ import {
   MinusCircle,
   PlusCircle,
   MessageCircle,
+  Paintbrush,
 } from "lucide-react";
+import { ModificationRequestForm } from "@/components/product/ModificationRequestForm";
 
 export default function ProductDetail() {
   const [match, params] = useRoute<{ id: string }>("/products/:id");
@@ -421,6 +423,12 @@ export default function ProductDetail() {
                 <TabsTrigger value="description" className="flex-1">Description</TabsTrigger>
                 <TabsTrigger value="reviews" className="flex-1">Reviews ({reviews.length})</TabsTrigger>
                 <TabsTrigger value="shipping" className="flex-1">Shipping & Returns</TabsTrigger>
+                {isAuthenticated && user?.role === 'buyer' && (
+                  <TabsTrigger value="customization" className="flex-1">
+                    <Paintbrush size={16} className="mr-2" />
+                    Request Modifications
+                  </TabsTrigger>
+                )}
               </TabsList>
               
               <TabsContent value="description" className="mt-6">
@@ -586,6 +594,40 @@ export default function ProductDetail() {
                         <p className="mt-1 text-sm">Customized or personalized items cannot be returned unless damaged or defective.</p>
                       </div>
                     </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+              
+              <TabsContent value="customization" className="mt-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Request Product Modifications</CardTitle>
+                    <CardDescription>
+                      Need changes to this product? Request a customization from the seller.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {isAuthenticated && user ? (
+                      <ModificationRequestForm 
+                        productId={product.id} 
+                        sellerId={product.sellerId}
+                        onRequestSuccess={() => {
+                          toast({
+                            title: "Request Submitted",
+                            description: "Your modification request has been sent to the seller. You can view your requests in your dashboard."
+                          });
+                        }}
+                      />
+                    ) : (
+                      <div className="text-center py-8">
+                        <p className="text-gray-500 mb-4">Please sign in to request product modifications</p>
+                        <Button asChild>
+                          <Link href={`/auth?redirect=/products/${productId}`}>
+                            Sign In
+                          </Link>
+                        </Button>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>

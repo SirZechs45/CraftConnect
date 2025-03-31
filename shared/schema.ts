@@ -18,6 +18,7 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   stripeCustomerId: text("stripe_customer_id"),
+  googleId: text("google_id"),
 });
 
 // Products Table
@@ -86,8 +87,21 @@ export const cartItems = pgTable("cart_items", {
   selectedVariant: text("selected_variant"),
 });
 
+// Product Modification Requests Table
+export const productModificationRequests = pgTable("product_modification_requests", {
+  id: serial("id").primaryKey(),
+  productId: integer("product_id").references(() => products.id).notNull(),
+  buyerId: integer("buyer_id").references(() => users.id).notNull(),
+  sellerId: integer("seller_id").references(() => users.id).notNull(), 
+  requestDetails: text("request_details").notNull(),
+  status: varchar("status", { length: 50 }).default('pending').notNull(),
+  sellerResponse: text("seller_response"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Notification types
-export const notificationType = ['order_update', 'system', 'message'] as const;
+export const notificationType = ['order_update', 'system', 'message', 'modification_request'] as const;
 
 // Notifications Table
 export const notifications = pgTable("notifications", {
@@ -127,7 +141,8 @@ export const insertUserSchema = z.object({
       return birthDate;
     })
     .optional(),
-  confirmPassword: z.string()
+  confirmPassword: z.string(),
+  googleId: z.string().optional(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
@@ -139,6 +154,7 @@ export const insertReviewSchema = createInsertSchema(reviews).omit({ id: true, c
 export const insertMessageSchema = createInsertSchema(messages).omit({ id: true, createdAt: true });
 export const insertCartItemSchema = createInsertSchema(cartItems).omit({ id: true });
 export const insertNotificationSchema = createInsertSchema(notifications).omit({ id: true, createdAt: true });
+export const insertProductModificationRequestSchema = createInsertSchema(productModificationRequests).omit({ id: true, createdAt: true, updatedAt: true });
 
 // Types
 export type User = typeof users.$inferSelect;
@@ -157,3 +173,5 @@ export type CartItem = typeof cartItems.$inferSelect;
 export type InsertCartItem = z.infer<typeof insertCartItemSchema>;
 export type Notification = typeof notifications.$inferSelect;
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+export type ProductModificationRequest = typeof productModificationRequests.$inferSelect;
+export type InsertProductModificationRequest = z.infer<typeof insertProductModificationRequestSchema>;

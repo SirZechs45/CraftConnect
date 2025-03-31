@@ -1,4 +1,4 @@
-import express, { type Express, type Request, type Response } from "express";
+import express, { type Express, type Request, type Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import bcrypt from "bcrypt";
@@ -18,6 +18,8 @@ import {
   insertNotificationSchema
 } from "@shared/schema";
 import Stripe from "stripe";
+import passport from 'passport';
+import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 
 // Stripe setup
 let stripe: Stripe | null = null;
@@ -95,6 +97,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
       maxAge: 24 * 60 * 60 * 1000 // 24 hours
     }
   }));
+  
+  // Initialize Passport
+  app.use(passport.initialize());
+  app.use(passport.session());
+  
+  // Set up Google strategy
+  if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+    passport.use(new GoogleStrategy({
+      clientID: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      callbackURL: "/api/auth/google/callback",
+      scope: ['profile', 'email']
+    }, async (accessToken, refreshToken, profile, done) => {
+      try {
+        if (!profile.emails || profile.emails.length === 0) {
+          return done(new Error("No email provided from Google"));
+        }
+        
+        const email = profile.emails[0].value;
+        
+        // Check if user exists
+        let user = await storage.getUserByEmail(email);
+        
+        if (!user) {
+          // Create a new user
+          user = await storage.createUser({
+            email: email,
+            name: profile.displayName || email.split('@')[0],
+            // Generate a username from email
+            username: email.split('@')[0] + '_' + Date.now().toString().slice(-4),
+            // Generate a random secure password
+            password: await bcrypt.hash(Math.random().toString(36).slice(-10) + Date.now().toString(), 10),
+            role: 'buyer',
+            // Store Google profile ID for future reference
+            googleId: profile.id,
+            confirmPassword: "placeholder" // This is needed for validation but won't be stored
+          });
+        }
+        
+        return done(null, user);
+      } catch (error) {
+        return done(error);
+      }
+    }));
+    
+    // Serialize user to the session
+    passport.serializeUser((user: any, done) => {
+      done(null, user.id);
+    });
+    
+    // Deserialize user from the session
+    passport.deserializeUser(async (id: number, done) => {
+      try {
+        const user = await storage.getUser(id);
+        done(null, user);
+      } catch (error) {
+        done(error);
+      }
+    });
+  } else {
+    console.log('Google OAuth is not configured. GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET environment variables are required.');
+  }
 
   // Middleware to check if user is authenticated
   const isAuthenticated = (req: Request, res: Response, next: Function) => {
@@ -969,6 +1033,121 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Product Modification Request Routes
+  app.get('/api/product-modification-requests/buyer', isAuthenticated, async (req, res) => {
+    try {
+      const buyerId = req.session.userId;
+      const requests = await storage.getProductModificationRequestsForBuyer(buyerId);
+      res.json(requests);
+    } catch (error) {
+      console.error('Error getting buyer modification requests:', error);
+      res.status(500).json({ error: 'Failed to get modification requests' });
+    }
+  });
+  
+  app.get('/api/product-modification-requests/seller', isAuthenticated, async (req, res) => {
+    try {
+      const sellerId = req.session.userId;
+      const requests = await storage.getProductModificationRequestsForSeller(sellerId);
+      res.json(requests);
+    } catch (error) {
+      console.error('Error getting seller modification requests:', error);
+      res.status(500).json({ error: 'Failed to get modification requests' });
+    }
+  });
+  
+  app.get('/api/product-modification-requests/product/:productId', isAuthenticated, async (req, res) => {
+    try {
+      const productId = parseInt(req.params.productId);
+      const requests = await storage.getProductModificationRequestsForProduct(productId);
+      res.json(requests);
+    } catch (error) {
+      console.error('Error getting product modification requests:', error);
+      res.status(500).json({ error: 'Failed to get modification requests' });
+    }
+  });
+  
+  app.post('/api/product-modification-requests', isAuthenticated, async (req, res) => {
+    try {
+      const buyerId = req.session.userId;
+      const { productId, sellerId, requestDetails } = req.body;
+      
+      // Validate required fields
+      if (!productId || !sellerId || !requestDetails) {
+        return res.status(400).json({ error: 'Missing required fields' });
+      }
+      
+      const request = await storage.createProductModificationRequest({
+        productId,
+        buyerId,
+        sellerId,
+        requestDetails,
+        status: 'pending'
+      });
+      
+      // Create notification for the seller
+      await storage.createNotification({
+        userId: sellerId,
+        title: 'New Product Modification Request',
+        message: `You have a new modification request for your product`,
+        type: 'modification_request',
+        isRead: false,
+        data: {
+          requestId: request.id,
+          productId: request.productId
+        }
+      });
+      
+      res.status(201).json(request);
+    } catch (error) {
+      console.error('Error creating product modification request:', error);
+      res.status(500).json({ error: 'Failed to create modification request' });
+    }
+  });
+  
+  app.patch('/api/product-modification-requests/:id', isAuthenticated, async (req, res) => {
+    try {
+      const requestId = parseInt(req.params.id);
+      const { status, sellerResponse } = req.body;
+      
+      // Get the original request to check permissions
+      const originalRequest = await storage.getProductModificationRequest(requestId);
+      if (!originalRequest) {
+        return res.status(404).json({ error: 'Modification request not found' });
+      }
+      
+      // Check permissions - only the seller can update the status
+      if (originalRequest.sellerId !== req.session.userId) {
+        return res.status(403).json({ error: 'Unauthorized' });
+      }
+      
+      const updatedRequest = await storage.updateProductModificationRequestStatus(
+        requestId, 
+        status, 
+        sellerResponse
+      );
+      
+      // Create notification for the buyer
+      await storage.createNotification({
+        userId: originalRequest.buyerId,
+        title: 'Modification Request Updated',
+        message: `Your product modification request has been ${status}`,
+        type: 'modification_request',
+        isRead: false,
+        data: {
+          requestId,
+          productId: originalRequest.productId,
+          status
+        }
+      });
+      
+      res.json(updatedRequest);
+    } catch (error) {
+      console.error('Error updating product modification request:', error);
+      res.status(500).json({ error: 'Failed to update modification request' });
+    }
+  });
+
   // Payment Routes
   app.post('/api/create-payment-intent', isAuthenticated, async (req, res) => {
     try {
@@ -990,6 +1169,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(400).json({ message: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
+
+  // Google OAuth routes
+  app.get('/api/auth/google', 
+    passport.authenticate('google', { scope: ['profile', 'email'] })
+  );
+  
+  app.get('/api/auth/google/callback', 
+    passport.authenticate('google', { failureRedirect: '/auth?error=google-auth-failed' }),
+    (req, res) => {
+      // Successful authentication
+      if (req.user) {
+        // Set session userId
+        req.session.userId = (req.user as any).id;
+        
+        // Determine where to redirect based on user role
+        const user = req.user as any;
+        let redirectUrl = '/';
+        
+        if (user.role === 'admin') {
+          redirectUrl = '/dashboard/admin';
+        } else if (user.role === 'seller') {
+          redirectUrl = '/dashboard/seller';
+        }
+        
+        res.redirect(redirectUrl);
+      } else {
+        res.redirect('/auth?error=login-failed');
+      }
+    }
+  );
 
   const httpServer = createServer(app);
 
