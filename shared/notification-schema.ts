@@ -4,7 +4,7 @@ import { z } from "zod";
 import { users } from "./schema";
 
 // Notification types
-export const notificationType = ['order_update', 'system', 'message'] as const;
+export const notificationType = ['order_update', 'system', 'message', 'modification_request'] as const;
 
 // Notifications table
 export const notifications = pgTable("notifications", {
