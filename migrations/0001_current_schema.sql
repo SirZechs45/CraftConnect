@@ -2,7 +2,7 @@
 CREATE TYPE "public"."user_role" AS ENUM('buyer', 'seller', 'admin');
 CREATE TYPE "public"."order_status" AS ENUM('pending', 'processing', 'shipped', 'delivered', 'cancelled');
 
-CREATE TABLE IF NOT EXISTS "users" (
+CREATE TABLE IF NOT EXISTS "public"."users" (
   "id" serial PRIMARY KEY NOT NULL,
   "email" text NOT NULL UNIQUE,
   "username" text NOT NULL UNIQUE,
@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS "users" (
   "google_id" text
 );
 
-CREATE TABLE IF NOT EXISTS "products" (
+CREATE TABLE IF NOT EXISTS "public"."products" (
   "id" serial PRIMARY KEY NOT NULL,
   "seller_id" integer NOT NULL REFERENCES "users"("id"),
   "title" text NOT NULL,
@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS "products" (
   "updated_at" timestamp DEFAULT now() NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS "orders" (
+CREATE TABLE IF NOT EXISTS "public"."orders" (
   "id" serial PRIMARY KEY NOT NULL,
   "buyer_id" integer NOT NULL REFERENCES "users"("id"),
   "total_amount" numeric NOT NULL,
@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS "orders" (
   "updated_at" timestamp DEFAULT now() NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS "order_items" (
+CREATE TABLE IF NOT EXISTS "public"."order_items" (
   "id" serial PRIMARY KEY NOT NULL,
   "order_id" integer NOT NULL REFERENCES "orders"("id"),
   "product_id" integer NOT NULL REFERENCES "products"("id"),
@@ -50,7 +50,7 @@ CREATE TABLE IF NOT EXISTS "order_items" (
   "selected_variant" text
 );
 
-CREATE TABLE IF NOT EXISTS "reviews" (
+CREATE TABLE IF NOT EXISTS "public"."reviews" (
   "id" serial PRIMARY KEY NOT NULL,
   "product_id" integer NOT NULL REFERENCES "products"("id"),
   "buyer_id" integer NOT NULL REFERENCES "users"("id"),
@@ -59,7 +59,7 @@ CREATE TABLE IF NOT EXISTS "reviews" (
   "created_at" timestamp DEFAULT now() NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS "messages" (
+CREATE TABLE IF NOT EXISTS "public"."messages" (
   "id" serial PRIMARY KEY NOT NULL,
   "sender_id" integer NOT NULL REFERENCES "users"("id"),
   "receiver_id" integer NOT NULL REFERENCES "users"("id"),
@@ -67,7 +67,7 @@ CREATE TABLE IF NOT EXISTS "messages" (
   "created_at" timestamp DEFAULT now() NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS "cart_items" (
+CREATE TABLE IF NOT EXISTS "public"."cart_items" (
   "id" serial PRIMARY KEY NOT NULL,
   "user_id" integer NOT NULL REFERENCES "users"("id"),
   "product_id" integer NOT NULL REFERENCES "products"("id"),
@@ -76,7 +76,7 @@ CREATE TABLE IF NOT EXISTS "cart_items" (
   "selected_variant" text
 );
 
-CREATE TABLE IF NOT EXISTS "notifications" (
+CREATE TABLE IF NOT EXISTS "public"."notifications" (
   "id" serial PRIMARY KEY NOT NULL,
   "user_id" integer NOT NULL REFERENCES "users"("id"),
   "title" varchar(255) NOT NULL,
@@ -87,7 +87,7 @@ CREATE TABLE IF NOT EXISTS "notifications" (
   "created_at" timestamp DEFAULT now() NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS "product_modification_requests" (
+CREATE TABLE IF NOT EXISTS "public"."product_modification_requests" (
   "id" serial PRIMARY KEY NOT NULL,
   "product_id" integer NOT NULL REFERENCES "products"("id"),
   "buyer_id" integer NOT NULL REFERENCES "users"("id"),
